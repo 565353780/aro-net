@@ -1,12 +1,11 @@
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Build import cythonize
-from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
+import os
 import numpy
+from setuptools import setup
+from Cython.Build import cythonize
+from distutils.extension import Extension
+from torch.utils.cpp_extension import BuildExtension
 
+lib_root_folder_path = os.getcwd() + "/../aro-net/aro_net/Lib/"
 
 # Get the numpy include directory.
 numpy_include_dir = numpy.get_include()
@@ -15,56 +14,47 @@ numpy_include_dir = numpy.get_include()
 
 # mcubes (marching cubes algorithm)
 mcubes_module = Extension(
-    'src_convonet.utils.libmcubes.mcubes',
+    "aro_net.Lib.libmcubes.mcubes",
     sources=[
-        'src_convonet/utils/libmcubes/mcubes.pyx',
-        'src_convonet/utils/libmcubes/pywrapper.cpp',
-        'src_convonet/utils/libmcubes/marchingcubes.cpp'
+        lib_root_folder_path + "libmcubes/mcubes.pyx",
+        lib_root_folder_path + "libmcubes/pywrapper.cpp",
+        lib_root_folder_path + "libmcubes/marchingcubes.cpp",
     ],
-    language='c++',
-    extra_compile_args=['-std=c++11'],
-    include_dirs=[numpy_include_dir]
+    language="c++",
+    extra_compile_args=["-std=c++11"],
+    include_dirs=[numpy_include_dir],
 )
 
 # triangle hash (efficient mesh intersection)
 triangle_hash_module = Extension(
-    'src_convonet.utils.libmesh.triangle_hash',
-    sources=[
-        'src_convonet/utils/libmesh/triangle_hash.pyx'
-    ],
-    libraries=['m'],  # Unix-like specific
-    include_dirs=[numpy_include_dir]
+    "aro_net.Lib.libmesh.triangle_hash",
+    sources=[lib_root_folder_path + "libmesh/triangle_hash.pyx"],
+    libraries=["m"],  # Unix-like specific
+    include_dirs=[numpy_include_dir],
 )
 
 # mise (efficient mesh extraction)
 mise_module = Extension(
-    'src_convonet.utils.libmise.mise',
-    sources=[
-        'src_convonet/utils/libmise/mise.pyx'
-    ],
+    "aro_net.Lib.libmise.mise",
+    sources=[lib_root_folder_path + "libmise/mise.pyx"],
 )
 
 # simplify (efficient mesh simplification)
 simplify_mesh_module = Extension(
-    'src_convonet.utils.libsimplify.simplify_mesh',
-    sources=[
-        'src_convonet/utils/libsimplify/simplify_mesh.pyx'
-    ],
-    include_dirs=[numpy_include_dir]
+    "aro_net.Lib.libsimplify.simplify_mesh",
+    sources=[lib_root_folder_path + "libsimplify/simplify_mesh.pyx"],
+    include_dirs=[numpy_include_dir],
 )
 
 # voxelization (efficient mesh voxelization)
 voxelize_module = Extension(
-    'src_convonet.utils.libvoxelize.voxelize',
-    sources=[
-        'src_convonet/utils/libvoxelize/voxelize.pyx'
-    ],
-    libraries=['m']  # Unix-like specific
+    "aro_net.Lib.libvoxelize.voxelize",
+    sources=[lib_root_folder_path + "libvoxelize/voxelize.pyx"],
+    libraries=["m"],  # Unix-like specific
 )
 
 # Gather all extension modules
 ext_modules = [
-    # pykdtree,
     mcubes_module,
     triangle_hash_module,
     mise_module,
@@ -72,9 +62,4 @@ ext_modules = [
     voxelize_module,
 ]
 
-setup(
-    ext_modules=cythonize(ext_modules),
-    cmdclass={
-        'build_ext': BuildExtension
-    }
-)
+setup(ext_modules=cythonize(ext_modules), cmdclass={"build_ext": BuildExtension})
