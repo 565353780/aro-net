@@ -1,15 +1,17 @@
 import os
 import glob
 import torch
-import shutil
 import torch.optim as optim
 import torch.nn.functional as F
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 
 from aro_net.Dataset.aro import ARONetDataset
 from aro_net.Dataset.single_shape import SingleShapeDataset
 from aro_net.Model.aro import ARONet
+
+from aro_net.Method.time import getCurrentTime
 
 from aro_net.Module.logger import Logger
 
@@ -37,18 +39,59 @@ def cal_loss_pred(x, gt, pred_type):
 
 
 class Trainer(object):
-    def __init__(self) -> None:
+    def __init__(self, args) -> None:
+        self.args = args
+
+        self.device = "cuda"
+
+        current_time = getCurrentTime()
+
+        self.dir_ckpt = "./output/" + current_time + "/"
+        self.log_folder_path = "./logs/" + current_time + "/"
+
+        self.train_loader = DataLoader(
+            ARONetDataset(split="train", args=self.args),
+            shuffle=True,
+            batch_size=self.args.n_bs,
+            num_workers=self.args.n_wk,
+            drop_last=True,
+        )
+        self.val_loader = DataLoader(
+            ARONetDataset(split="val", args=self.args),
+            shuffle=False,
+            batch_size=self.args.n_bs,
+            num_workers=self.args.n_wk,
+            drop_last=True,
+        )
+
+        self.model = ARONet(
+            n_anc=self.args.n_anc,
+            n_qry=self.args.n_qry,
+            n_local=self.args.n_local,
+            cone_angle_th=self.args.cone_angle_th,
+            tfm_pos_enc=self.args.tfm_pos_enc,
+            cond_pn=self.args.cond_pn,
+            use_dist_hit=self.args.use_dist_hit,
+            pn_use_bn=self.args.pn_use_bn,
+            pred_type=self.args.pred_type,
+            norm_coord=self.args.norm_coord,
+        ).to(self.device)
+
+        if self.args.multi_gpu:
+            self.model = torch.nn.DataParallel(self.model)
+
+        self.writer = Logger(self.log_folder_path)
         return
 
-    def train_step(self, batch, model, opt, args):
+    def train_step(self, batch, opt):
         for key in batch:
             batch[key] = batch[key].cuda()
         opt.zero_grad()
-        x = model(batch)
+        x = self.model(batch)
 
-        loss_pred = cal_loss_pred(x, batch, args.pred_type)
+        loss_pred = cal_loss_pred(x, batch, self.args.pred_type)
         loss = loss_pred
-        if args.use_dist_hit:
+        if self.args.use_dist_hit:
             loss_hit_dist = F.l1_loss(x["dist_hit_pred"], batch["dist_hit"])
             loss += loss_hit_dist
         else:
@@ -57,22 +100,22 @@ class Trainer(object):
         loss.backward()
         opt.step()
         with torch.no_grad():
-            acc = cal_acc(x, batch, args.pred_type)
+            acc = cal_acc(x, batch, self.args.pred_type)
         return loss_pred.item(), loss_hit_dist.item(), acc.item()
 
     @torch.no_grad()
-    def val_step(self, model, val_loader, pred_type):
+    def val_step(self):
         avg_loss_pred = 0
         avg_acc = 0
         ni = 0
-        for batch in val_loader:
+        for batch in self.val_loader:
             for key in batch:
                 batch[key] = batch[key].cuda()
-            x = model(batch)
+            x = self.model(batch)
 
-            loss_pred = cal_loss_pred(x, batch, pred_type)
+            loss_pred = cal_loss_pred(x, batch, self.args.pred_type)
 
-            acc = cal_acc(x, batch, pred_type)
+            acc = cal_acc(x, batch, self.args.pred_type)
 
             avg_loss_pred = avg_loss_pred + loss_pred.item()
             avg_acc = avg_acc + acc.item()
@@ -81,103 +124,16 @@ class Trainer(object):
         avg_acc /= ni
         return avg_loss_pred, avg_acc
 
-    def backup_code(self, name_exp):
-        os.makedirs(os.path.join("experiments", name_exp, "code"), exist_ok=True)
-        shutil.copy(
-            "src/models.py", os.path.join("experiments", name_exp, "code", "models.py")
-        )
-        shutil.copy(
-            "src/datasets.py",
-            os.path.join("experiments", name_exp, "code", "datasets.py"),
-        )
-        shutil.copy(
-            "src/pointnets.py",
-            os.path.join("experiments", name_exp, "code", "pointnets.py"),
-        )
-        shutil.copy(
-            "src/layers.py", os.path.join("experiments", name_exp, "code", "layers.py")
-        )
-        shutil.copy(
-            "./train.py", os.path.join("experiments", name_exp, "code", "train_occ.py")
-        )
-        shutil.copy(
-            "./options.py", os.path.join("experiments", name_exp, "code", "options.py")
-        )
+    def train(self):
+        os.makedirs(self.dir_ckpt, exist_ok=True)
 
-    def train(self, args):
-        name_exp = args.name_exp
-        name_exp_stamp = name_exp
-        # name_exp_stamp = str(time.time()) + '_' + name_exp
-        os.makedirs(os.path.join("experiments", name_exp_stamp), exist_ok=True)
-        self.backup_code(name_exp_stamp)
+        opt = optim.Adam(self.model.parameters(), lr=self.args.lr)
 
-        # Dump options
-        with open(os.path.join("experiments", name_exp_stamp, "opts.txt"), "w") as f:
-            for key, value in vars(args).items():
-                f.write(str(key) + ": " + str(value) + "\n")
-
-        dir_ckpt = os.path.join("experiments", name_exp_stamp, "ckpt")
-        os.makedirs(dir_ckpt, exist_ok=True)
-
-        writer = Logger(os.path.join("experiments", name_exp_stamp, "log"))
-
-        if args.name_dataset in ["abc", "shapenet"]:
-            train_loader = DataLoader(
-                ARONetDataset(split="train", args=args),
-                shuffle=True,
-                batch_size=args.n_bs,
-                num_workers=args.n_wk,
-                drop_last=True,
-            )
-            val_loader = DataLoader(
-                ARONetDataset(split="val", args=args),
-                shuffle=False,
-                batch_size=args.n_bs,
-                num_workers=args.n_wk,
-                drop_last=True,
-            )
-        else:
-            train_loader = DataLoader(
-                SingleShapeDataset(split="train", args=args),
-                shuffle=True,
-                batch_size=args.n_bs,
-                num_workers=args.n_wk,
-                drop_last=True,
-            )
-            val_loader = DataLoader(
-                SingleShapeDataset(split="val", args=args),
-                shuffle=False,
-                batch_size=args.n_bs,
-                num_workers=args.n_wk,
-                drop_last=True,
-            )
-
-        model = ARONet(
-            n_anc=args.n_anc,
-            n_qry=args.n_qry,
-            n_local=args.n_local,
-            cone_angle_th=args.cone_angle_th,
-            tfm_pos_enc=args.tfm_pos_enc,
-            cond_pn=args.cond_pn,
-            use_dist_hit=args.use_dist_hit,
-            pn_use_bn=args.pn_use_bn,
-            pred_type=args.pred_type,
-            norm_coord=args.norm_coord,
-        )
-
-        if args.multi_gpu:
-            model = torch.nn.DataParallel(model)
-
-        model.cuda()
-
-        opt = optim.Adam(model.parameters(), lr=args.lr)
-
-        if args.resume:
-            fnames_ckpt = glob.glob(os.path.join(dir_ckpt, "*"))
+        if self.args.resume:
+            fnames_ckpt = glob.glob(os.path.join(self.dir_ckpt, "*"))
             fname_ckpt_latest = max(fnames_ckpt, key=os.path.getctime)
-            # path_ckpt = os.path.join(dir_ckpt, fname_ckpt_latest)
             ckpt = torch.load(fname_ckpt_latest)
-            model.module.load_state_dict(ckpt["model"])
+            self.model.module.load_state_dict(ckpt["model"])
             opt.load_state_dict(ckpt["opt"])
             epoch_latest = ckpt["n_epoch"] + 1
             n_iter = ckpt["n_iter"]
@@ -187,11 +143,11 @@ class Trainer(object):
             n_iter = 0
             n_epoch = 0
 
-        for _ in range(epoch_latest, args.n_epochs):
-            model.train()
-            for batch in train_loader:
-                loss_pred, loss_hit_dist, acc = self.train_step(batch, model, opt, args)
-                if n_iter % args.freq_log == 0:
+        for _ in range(epoch_latest, self.args.n_epochs):
+            self.model.train()
+            for batch in tqdm(self.train_loader):
+                loss_pred, loss_hit_dist, acc = self.train_step(batch, opt)
+                if n_iter % self.args.freq_log == 0:
                     print(
                         "[train] epcho:",
                         n_epoch,
@@ -204,18 +160,16 @@ class Trainer(object):
                         " acc:",
                         acc,
                     )
-                    writer.add_scalar("Loss/train", loss_pred, n_iter)
-                    writer.add_scalar("Acc/train", acc, n_iter)
+                    self.writer.addScalar("Loss/train", loss_pred, n_iter)
+                    self.writer.addScalar("Acc/train", acc, n_iter)
 
                 n_iter += 1
 
-            if n_epoch % args.freq_ckpt == 0:
-                model.eval()
-                avg_loss_pred, avg_acc = self.val_step(
-                    model, val_loader, args.pred_type
-                )
-                writer.add_scalar("Loss/val", avg_loss_pred, n_iter)
-                writer.add_scalar("Acc/val", avg_acc, n_iter)
+            if n_epoch % self.args.freq_ckpt == 0:
+                self.model.eval()
+                avg_loss_pred, avg_acc = self.val_step()
+                self.writer.addScalar("Loss/val", avg_loss_pred, n_iter)
+                self.writer.addScalar("Acc/val", avg_acc, n_iter)
                 print(
                     "[val] epcho:",
                     n_epoch,
@@ -226,29 +180,29 @@ class Trainer(object):
                     " acc:",
                     avg_acc,
                 )
-                if args.multi_gpu:
+                if self.args.multi_gpu:
                     torch.save(
                         {
-                            "model": model.module.state_dict(),
+                            "model": self.model.module.state_dict(),
                             "opt": opt.state_dict(),
                             "n_epoch": n_epoch,
                             "n_iter": n_iter,
                         },
-                        f"{dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
+                        f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
                     )
                 else:
                     torch.save(
                         {
-                            "model": model.state_dict(),
+                            "model": self.model.state_dict(),
                             "opt": opt.state_dict(),
                             "n_epoch": n_epoch,
                             "n_iter": n_iter,
                         },
-                        f"{dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
+                        f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
                     )
-            if n_epoch > 0 and n_epoch % args.freq_decay == 0:
+            if n_epoch > 0 and n_epoch % self.args.freq_decay == 0:
                 for g in opt.param_groups:
-                    g["lr"] = g["lr"] * args.weight_decay
+                    g["lr"] = g["lr"] * self.args.weight_decay
 
             n_epoch += 1
 

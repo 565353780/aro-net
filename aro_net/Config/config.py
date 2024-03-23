@@ -125,7 +125,7 @@ def get_parser():
     parser.add_argument(
         "--n_dim", type=int, default=128, help="the dimension of hidden layer features"
     )
-    parser.add_argument("--multi_gpu", type=bool, default=True)
+    parser.add_argument("--multi_gpu", type=bool, default=False)
     parser.add_argument(
         "--freq_ckpt", type=int, default=10, help="frequency of epoch saving checkpoint"
     )
