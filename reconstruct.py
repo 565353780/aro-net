@@ -14,6 +14,7 @@ from src import datasets
 from src.models import ARONetModel
 from src.datasets import ARONetDataset
 import os
+import open3d as o3d
 from options import get_parser
 
 class Generator3D(object):
@@ -71,7 +72,7 @@ class Generator3D(object):
         n_qry = data['qry'].shape[1]
         chunk_size = self.chunk_size
         n_chunk = math.ceil(n_qry / chunk_size)
-
+        
         ret = []
 
         for idx in range(n_chunk):
@@ -84,8 +85,7 @@ class Generator3D(object):
                         data_chunk[key] = data[key][:, chunk_size*idx:n_qry, ...]
                 else:
                     data_chunk[key] =  data[key]
-
-            ret_dict = self.model(data_chunk)
+            ret_dict = self.model(data_chunk)#have some problem
             if self.pred_type == 'occ':
                 ret.append(ret_dict['occ_pred'])
             else:
@@ -105,7 +105,6 @@ class Generator3D(object):
         # self.model.eval()
         device = self.device
         stats_dict = {}
-
         mesh = self.generate_from_latent(data, stats_dict=stats_dict)
 
         if return_stats:
@@ -137,8 +136,8 @@ class Generator3D(object):
             value_grid = values.reshape(nx, nx, nx)
         else:
             mesh_extractor = MISE(
-                self.resolution0, self.upsampling_steps, threshold)
-
+                8, self.upsampling_steps, threshold)
+            
             points = mesh_extractor.query()
             while points.shape[0] != 0:
                 # Query points
@@ -157,6 +156,7 @@ class Generator3D(object):
 
         # Extract mesh
         stats_dict['time (eval points)'] = time.time() - t0
+        
 
         mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
         return mesh
@@ -319,6 +319,51 @@ class Generator3D(object):
 
         return mesh
 
+# if __name__ == '__main__':
+#     args = get_parser().parse_args()
+
+#     model = ARONetModel(n_anc=args.n_anc, n_qry=args.n_qry, n_local=args.n_local, cone_angle_th=args.cone_angle_th, tfm_pos_enc=args.tfm_pos_enc, 
+#                         cond_pn=args.cond_pn, use_dist_hit=args.use_dist_hit, pn_use_bn=args.pn_use_bn, pred_type=args.pred_type, norm_coord=args.norm_coord)
+#     path_ckpt = os.path.join('experiments', args.name_exp, 'ckpt', args.name_ckpt)
+#     model.load_state_dict(torch.load(path_ckpt)['model'])
+#     model = model.cuda()
+#     model = model.eval()
+#     # create the results folder to save the results
+#     path_res = os.path.join('experiments', args.name_exp, 'results', args.name_dataset)
+#     if not os.path.exists(path_res):
+#         os.makedirs(path_res)
+
+#     generator = Generator3D(model, threshold=args.mc_threshold, resolution0=args.mc_res0, upsampling_steps=args.mc_up_steps, 
+#                             chunk_size=args.mc_chunk_size, pred_type=args.pred_type)
+#     dataset = ARONetDataset(split='test', args=args)
+    
+#     dir_dataset = os.path.join(args.dir_data, args.name_dataset)
+#     if args.name_dataset == 'shapenet':
+#         categories = args.categories_test.split(',')[:-1]
+#         id_shapes = []
+#         for category in categories:
+#             id_shapes_ = open(f'{dir_dataset}/04_splits/{category}/test.lst').read().split('\n')
+#             id_shapes += id_shapes_
+
+#     else:
+#         id_shapes = open(f'{dir_dataset}/04_splits/test.lst').read().split('\n')
+#     with torch.no_grad():
+        
+#         for idx in tqdm(range(len(dataset))):
+         
+#             data = dataset[idx]
+#             # print('data', data)
+#             for key in data:
+#                 data[key] = data[key].unsqueeze(0).cuda() 
+#             out = generator.generate_mesh(data)
+#             try:
+#                 mesh, stats_dict = out
+#             except TypeError:
+#                 mesh, stats_dict = out, {}
+                
+#             path_mesh = os.path.join(path_res, '%s.obj'%id_shapes[idx])
+#             mesh.export(path_mesh)
+
 if __name__ == '__main__':
     args = get_parser().parse_args()
 
@@ -329,38 +374,64 @@ if __name__ == '__main__':
     model = model.cuda()
     model = model.eval()
 
-    path_res = os.path.join('experiments', args.name_exp, 'results', args.name_dataset)
-    if not os.path.exists(path_res):
-        os.makedirs(path_res)
-
     generator = Generator3D(model, threshold=args.mc_threshold, resolution0=args.mc_res0, upsampling_steps=args.mc_up_steps, 
                             chunk_size=args.mc_chunk_size, pred_type=args.pred_type)
-    dataset = ARONetDataset(split='test', args=args)
     
-    dir_dataset = os.path.join(args.dir_data, args.name_dataset)
-    if args.name_dataset == 'shapenet':
-        categories = args.categories_test.split(',')[:-1]
-        id_shapes = []
-        for category in categories:
-            id_shapes_ = open(f'{dir_dataset}/04_splits/{category}/test.lst').read().split('\n')
-            id_shapes += id_shapes_
+    anc_0 = np.load(f'./{args.dir_data}/anchors/sphere{str(args.n_anc)}.npy')
+    anc = np.concatenate([anc_0[i::3] / (2 ** i) for i in range(3)])
+    
+    pcd_ply=o3d.io.read_point_cloud("/home/js/airplane_pcd.ply")
+    pcd_ply=pcd_ply.farthest_point_down_sample(250000)
+    # bbox = pcd_ply.get_axis_aligned_bounding_box()
+    
+    # # 获取边界框的中心和尺寸
+    # pcd_ply.translate(bbox.get_center())
+    # size = bbox.get_max_bound() - bbox.get_min_bound()
+    # pcd_ply.scale(1.0/max(size),center=pcd_ply.get_center())
+    
+   
+    pcd=np.asarray(pcd_ply.points)
+    # pcd=np.load("/home/js/zz/ARO-Net/data/shapenet/01_pcds/02691156/2048/d1a8e79eebf4a0b1579c3d4943e463ef.npy")
+    
+    print(len(pcd))
+    bounds = np.ptp(pcd, axis=0)
 
-    else:
-        id_shapes = open(f'{dir_dataset}/04_splits/test.lst').read().split('\n')
+    # Check if the point cloud is already normalized
+    if np.min(bounds) != 0.0:
+        translation = -np.mean(pcd, axis=0)
+        pcd += translation
+        scale = 1.0 / np.max(bounds)
+        pcd*= scale
+
+    data={
+            'pcd': torch.tensor(pcd).float(),
+            # 'qry': torch.tensor(qry).float(),
+            'anc': torch.tensor(anc).float(),
+            # 'occ': torch.tensor(occ).float(),
+            # 'sdf': torch.tensor(sdf).float(),
+        }
+    # data = ARONetDataset(split='test', args=args)[0]  # 只取第一个样本
+    print(data['pcd'])
+    for key in data:
+        data[key] = data[key].unsqueeze(0).cuda()
+    
+
     with torch.no_grad():
+        out = generator.generate_mesh(data)
+        try:
+            mesh, stats_dict = out
+        except TypeError:
+            mesh, stats_dict = out, {}
+        print(mesh)
+        # vertices = o3d.utility.Vector3dVector(mesh.vertices)
+        # triangles = o3d.utility.Vector3iVector(mesh.faces)
+        # mesh_o3d = o3d.geometry.TriangleMesh(vertices, triangles)
+        path_res = os.path.join('experiments', args.name_exp, 'results', 'airplane')
+        if not os.path.exists(path_res):
+            os.makedirs(path_res)
         
-        for idx in tqdm(range(len(dataset))):
-            data = dataset[idx]
-            for key in data:
-                data[key] = data[key].unsqueeze(0).cuda() 
-            out = generator.generate_mesh(data)
-            try:
-                mesh, stats_dict = out
-            except TypeError:
-                mesh, stats_dict = out, {}
-                
-            path_mesh = os.path.join(path_res, '%s.obj'%id_shapes[idx])
-            mesh.export(path_mesh)
-
-
-    
+        path_mesh = os.path.join(path_res, '%s.obj' % 'airplane4')  # 使用数据集名称作为文件名
+        mesh.export(path_mesh)
+        # print(path_mesh,type(path_mesh))
+        # file_path = 'experiments/pretrained_chairs/results/airplane/airplane1.obj'
+        # o3d.io.write_triangle_mesh(file_path,mesh_o3d)

@@ -72,24 +72,22 @@ class ARONetModel(nn.Module):
         """
         top_k = self.n_local
         th = np.pi / (self.cone_angle_th)
-
+       
         vec_anc2qry = qry[:, None, :, :] - anc[:, :, None, :]
         mod_anc2qry = torch.linalg.norm(vec_anc2qry, axis=-1)[:, :, :, None]
         norm_anc2qry = vec_anc2qry / mod_anc2qry
         ray_anc2qry = torch.cat([anc[:, :, None, :].expand(-1, -1, self.n_qry, -1), norm_anc2qry], -1)
-
         hit_all = []
         pcd_tile = pcd[:, None, :, :].expand(-1, self.n_qry, -1, -1)
-
         for idx_anc in range(self.n_anc):
             # first calculate the angle between anc2qry and anc2pts
-            ray_anc2qry_ = ray_anc2qry[:, idx_anc, :, :]
-            vec_anc2pts_ = pcd[:, None, :, :] - ray_anc2qry_[:, :, None, :3]
+            ray_anc2qry_ = ray_anc2qry[:, idx_anc, :, :]#torch.Size([1, 729, 6])
+            vec_anc2pts_ = pcd[:, None, :, :] - ray_anc2qry_[:, :, None, :3]# torch.Size([1, 729, 676029, 3])
+            # print(ray_anc2qry_.shape[1],'\n',vec_anc2pts_.shape[2])
             mod_anc2pts_ = torch.linalg.norm(vec_anc2pts_, axis=-1)
             norm_anc2pts_ = vec_anc2pts_ / mod_anc2pts_[:, :, :, None]
             norm_anc2qry_ = ray_anc2qry_[:, :, None, 3:]
             cos = (norm_anc2qry_ * norm_anc2pts_).sum(-1)
-
             # filter out those points are not in the cone
             flt_angle = cos <= np.cos(th)
             mod_anc2pts_[flt_angle] = torch.inf
@@ -144,7 +142,6 @@ class ARONetModel(nn.Module):
         pcd, qry, anc = feed_dict['pcd'], feed_dict['qry'], feed_dict['anc']
         n_bs, n_qry  = qry.shape[0], qry.shape[1]
         self.n_qry = n_qry # when doing marching cube, the number of query points may change
-
         # cast cone to capture local points (hit), and calculate observations from query points
         hit = self.cast_cone(pcd, anc, qry)
         feat_anc2qry, feat_qry2hit = self.cal_relatives(hit, anc, qry)

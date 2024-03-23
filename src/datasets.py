@@ -6,6 +6,16 @@ import trimesh
 from scipy.spatial.transform import Rotation
 from .utils import load_mesh
 
+'.ply/.pcd/.obj/.off'
+
+import open3d as o3d
+
+# pcd = o3d.io.read_point_cloud('/home/js/airplane_pcd.ply')
+# points = np.asarray(pcd.points)
+
+# mesh = o3d.io.read_triangle_mesh('****.ply/****.obj')
+# points = np.asarray(mesh.vertices)
+
 class ARONetDataset(Dataset):
     def __init__(self, split, args) -> None:
         self.split = split
@@ -89,10 +99,10 @@ class ARONetDataset(Dataset):
 
         feed_dict = {
             'pcd': torch.tensor(pcd).float(),
-            'qry': torch.tensor(qry).float(),
+            # 'qry': torch.tensor(qry).float(),
             'anc': torch.tensor(self.anc).float(),
-            'occ': torch.tensor(occ).float(),
-            'sdf': torch.tensor(sdf).float(),
+            # 'occ': torch.tensor(occ).float(),
+            # 'sdf': torch.tensor(sdf).float(),
         }
         if self.use_dist_hit and self.split == 'train': feed_dict['dist_hit'] = torch.tensor(dist_hit).float()
 
@@ -102,7 +112,7 @@ class ARONetDataset(Dataset):
 class SingleShapeDataset(Dataset):
     def __init__(self, split, args):
         super().__init__()
-        self.split = split
+        self.split = split #测试集，训练集，验证集分类
         self.n_anc = args.n_anc
         self.n_qry = args.n_qry
         self.shape = args.name_single
