@@ -28,9 +28,9 @@ def get_parser():
     # common hyper-parameters
     parser.add_argument('--name_exp', type=str, default='20220322_shapenet_topk16_bs8_qry512_train2048test1024_useoccnetdata_normcoord')
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
-    parser.add_argument('--n_bs', type=int, default=8, help='batch size')
+    parser.add_argument('--n_bs', type=int, default=2, help='batch size')
     parser.add_argument('--n_epochs', type=int, default=600, help='number of epochs')
-    parser.add_argument('--lr', type=float, default=3e-4, help='init learning rate')
+    parser.add_argument('--lr', type=float, default=1e-5, help='init learning rate')
     parser.add_argument('--n_dim', type=int, default=128, help='the dimension of hidden layer features')
     parser.add_argument('--multi_gpu', type=bool, default=True)
     parser.add_argument('--freq_ckpt', type=int, default=10, help='frequency of epoch saving checkpoint')
