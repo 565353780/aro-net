@@ -176,6 +176,9 @@ src_convonet/utils/libvoxelize/voxelize.cpython-39-x86_64-linux-gnu.so
 
 # compiled
 logs
+mcube.cpp
+simplify_mesh.cpp
+.DS_Store
 
 # output
 *.ckpt
