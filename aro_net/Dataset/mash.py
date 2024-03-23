@@ -15,7 +15,7 @@ from aro_net.Method.mesh import load_mesh
 
 class MashDataset(Dataset):
     def __init__(self, split, args) -> None:
-        # categories = args.categories_train.split(',')[:-1] # only check planes
+        # categories = args.categories_train.split(',')[:-1] # only check airplanes
         self.split = split
         # self.n_anc = args.n_anc
         self.n_anc = 40  # FIXME:
