@@ -10,7 +10,7 @@ from aro_net.Module.Generator3D.mash import Generator3D
 
 
 def demo():
-    device = 'cpu'
+    device = "cpu"
 
     args = get_parser().parse_args()
 

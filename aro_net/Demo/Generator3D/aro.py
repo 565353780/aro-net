@@ -65,6 +65,5 @@ def demo():
             print(mesh)
             path_mesh = save_result_folder_path + str(id_shapes[idx]) + ".obj"
             mesh.export(path_mesh)
-            return
 
     return True
