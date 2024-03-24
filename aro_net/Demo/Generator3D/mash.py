@@ -1,5 +1,6 @@
 import os
 import torch
+import trimesh
 from tqdm import tqdm
 
 from aro_net.Config.config import get_parser
@@ -9,6 +10,8 @@ from aro_net.Module.Generator3D.mash import Generator3D
 
 
 def demo():
+    device = 'cpu'
+
     args = get_parser().parse_args()
 
     n_anc = 40  # FIXME
@@ -19,14 +22,13 @@ def demo():
         cone_angle_th=args.cone_angle_th,
         tfm_pos_enc=args.tfm_pos_enc,
         cond_pn=args.cond_pn,
-        use_dist_hit=args.use_dist_hit,
         pn_use_bn=args.pn_use_bn,
         pred_type=args.pred_type,
         norm_coord=args.norm_coord,
     )
     path_ckpt = os.path.join("experiments", args.name_exp, "ckpt", args.name_ckpt)
     model.load_state_dict(torch.load(path_ckpt)["model"])
-    model = model.cuda()
+    model = model.to(device)
     model = model.eval()
 
     path_res = os.path.join("experiments", args.name_exp, "results", args.name_dataset)
@@ -67,12 +69,12 @@ def demo():
             for key in data:
                 if key == "shape_id":
                     continue
-                data[key] = data[key].unsqueeze(0).cuda()
+                data[key] = data[key].unsqueeze(0).to(device)
             out = generator.generate_mesh(data)
-            try:
-                mesh, stats_dict = out
-            except TypeError:
-                mesh, stats_dict = out, {}
+            if isinstance(out, trimesh.Trimesh):
+                mesh = out
+            else:
+                mesh = out[0]
 
             path_mesh = os.path.join(path_res, "%s.obj" % id_shapes[idx])
             mesh.export(path_mesh)

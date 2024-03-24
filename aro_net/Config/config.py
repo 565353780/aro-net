@@ -91,11 +91,6 @@ def get_parser():
         help="whether to use conditional pointnet",
     )
     parser.add_argument(
-        "--use_dist_hit",
-        action=argparse.BooleanOptionalAction,
-        help="predict hit distance as an auxiliary loss, run cal_hit_dist.py first",
-    )
-    parser.add_argument(
         "--tfm_pos_enc",
         action=argparse.BooleanOptionalAction,
         help="using transformer postisitonal encoding",
@@ -154,7 +149,7 @@ def get_parser():
         help="the number of query points in a chunk when doing marching cube, set it according to your GPU memory",
     )
     parser.add_argument(
-        "--mc_res0", type=int, default=64, help="start resolution for MISE"
+        "--mc_res0", type=int, default=16, help="start resolution for MISE"
     )
     parser.add_argument(
         "--mc_up_steps", type=int, default=2, help="number of upsampling steps"

@@ -11,7 +11,6 @@ class ARONetDataset(Dataset):
         self.split = split
         self.n_anc = args.n_anc
         self.n_qry = args.n_qry
-        self.use_dist_hit = args.use_dist_hit
         self.dir_dataset = os.path.join(args.dir_data, args.name_dataset)
         self.anc_0 = np.load(f"./{args.dir_data}/anchors/sphere{str(self.n_anc)}.npy")
         self.anc = np.concatenate([self.anc_0[i::3] / (2**i) for i in range(3)])
@@ -89,27 +88,18 @@ class ARONetDataset(Dataset):
             sdf = np.load(f"{self.dir_dataset}/03_qry_dists/{category}/{shape_id}.npy")
             occ = (sdf >= 0).astype(np.float32)  # sdf >= 0 means occ = 1
 
-        if self.use_dist_hit and self.split == "train":
-            dist_hit = np.load(
-                f"{self.dir_dataset}/05_hit_dist/{category}/{shape_id}.npy"
-            )
-
         if self.split == "train":
             np.random.seed()
             perm = np.random.permutation(len(qry))[: self.n_qry]
             qry = qry[perm]
             occ = occ[perm]
             sdf = sdf[perm]
-            if self.use_dist_hit and self.split == "train":
-                dist_hit = dist_hit[:, perm]
         else:
             np.random.seed(1234)
             perm = np.random.permutation(len(qry))[: self.n_qry]
             qry = qry[perm]
             occ = occ[perm]
             sdf = sdf[perm]
-            if self.use_dist_hit and self.split == "train":
-                dist_hit = dist_hit[:, perm]
 
         feed_dict = {
             "pcd": torch.tensor(pcd).float(),
@@ -118,7 +108,5 @@ class ARONetDataset(Dataset):
             "occ": torch.tensor(occ).float(),
             "sdf": torch.tensor(sdf).float(),
         }
-        if self.use_dist_hit and self.split == "train":
-            feed_dict["dist_hit"] = torch.tensor(dist_hit).float()
 
         return feed_dict

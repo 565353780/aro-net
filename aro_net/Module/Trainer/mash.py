@@ -43,7 +43,7 @@ class Trainer(object):
     def __init__(self, args) -> None:
         self.args = args
 
-        self.device = "cuda"
+        self.device = "cpu"
 
         current_time = getCurrentTime()
 
@@ -73,7 +73,6 @@ class Trainer(object):
             cone_angle_th=args.cone_angle_th,
             tfm_pos_enc=args.tfm_pos_enc,
             cond_pn=args.cond_pn,
-            use_dist_hit=args.use_dist_hit,
             pn_use_bn=args.pn_use_bn,
             pred_type=args.pred_type,
             norm_coord=args.norm_coord,
@@ -87,23 +86,17 @@ class Trainer(object):
 
     def train_step(self, batch, opt):
         for key in batch:
-            batch[key] = batch[key].cuda()
+            batch[key] = batch[key].to(self.device)
         opt.zero_grad()
         x = self.model(batch)
 
-        loss_pred = cal_loss_pred(x, batch, self.args.pred_type)
-        loss = loss_pred
-        if self.args.use_dist_hit:
-            loss_hit_dist = F.l1_loss(x["dist_hit_pred"], batch["dist_hit"])
-            loss += loss_hit_dist
-        else:
-            loss_hit_dist = torch.zeros(1)
+        loss = cal_loss_pred(x, batch, self.args.pred_type)
 
         loss.backward()
         opt.step()
         with torch.no_grad():
             acc = cal_acc(x, batch, self.args.pred_type)
-        return loss_pred.item(), loss_hit_dist.item(), acc.item()
+        return loss.item(), acc.item()
 
     @torch.no_grad()
     def val_step(self):
@@ -112,7 +105,7 @@ class Trainer(object):
         ni = 0
         for batch in self.val_loader:
             for key in batch:
-                batch[key] = batch[key].cuda()
+                batch[key] = batch[key].to(self.device)
             x = self.model(batch)
 
             loss_pred = cal_loss_pred(x, batch, self.args.pred_type)
@@ -150,21 +143,19 @@ class Trainer(object):
             start_time = time.process_time()
             self.model.train()
             for batch in tqdm(self.train_loader):
-                loss_pred, loss_hit_dist, acc = self.train_step(batch, opt)
+                loss, acc = self.train_step(batch, opt)
                 if n_iter % args.freq_log == 0:
                     print(
                         "[train] epcho:",
                         n_epoch,
                         " ,iter:",
                         n_iter,
-                        " loss_pred:",
-                        loss_pred,
-                        " loss_hit_dist:",
-                        loss_hit_dist,
+                        " loss:",
+                        loss,
                         " acc:",
                         acc,
                     )
-                    self.writer.addScalar("Loss/train", loss_pred, n_iter)
+                    self.writer.addScalar("Loss/train", loss, n_iter)
                     self.writer.addScalar("Acc/train", acc, n_iter)
                     lr = opt.state_dict()["param_groups"][0]["lr"]
                     self.writer.addScalar("Acc/lr", lr, n_iter)

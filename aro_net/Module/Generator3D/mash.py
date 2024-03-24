@@ -1,4 +1,3 @@
-import os
 import time
 import math
 import torch
@@ -7,17 +6,12 @@ import numpy as np
 import torch.optim as optim
 
 from torch import autograd
-from tqdm import trange, tqdm
-
-from aro_net.Config.config import get_parser
+from tqdm import trange
 
 from aro_net.Lib import libmcubes
 from aro_net.Lib.libmise import MISE
 from aro_net.Lib.common import make_3d_grid
 from aro_net.Lib.libsimplify import simplify_mesh
-
-from aro_net.Model.mash import MashNet
-from aro_net.Dataset.mash import MashDataset
 
 from aro_net.Method.feature import get_anchor_feature
 
@@ -104,7 +98,7 @@ class Generator3D(object):
 
         q_ftrs = (
             torch.tensor(np.expand_dims(q_ftrs, axis=0))
-            .to(device=torch.device("cuda"))
+            .to(self.device)
             .to(torch.float32)
         )
 
@@ -158,10 +152,11 @@ class Generator3D(object):
         else:
             return mesh
 
-    def generate_from_latent(self, c=None, stats_dict={}):
+    def generate_from_latent(self, data: dict, c=None, stats_dict={}):
         """Generates mesh from latent.
             Works for shapes normalized to a unit cube
         Args:
+            data (tensor): data tensor
             c (tensor): latent conditioned code c
             stats_dict (dict): stats dictionary
         """
@@ -175,7 +170,7 @@ class Generator3D(object):
         if self.upsampling_steps == 0:
             nx = self.resolution0
             pointsf = box_size * make_3d_grid((-0.5,) * 3, (0.5,) * 3, (nx,) * 3)
-            data["qry"] = pointsf.unsqueeze(0).cuda()
+            data["qry"] = pointsf.unsqueeze(0).to(self.device)
             values = self.eval_points(data).cpu().numpy()
             value_grid = values.reshape(nx, nx, nx)
         else:
@@ -188,7 +183,7 @@ class Generator3D(object):
                 # Normalize to bounding box
                 pointsf = box_size * (pointsf - 0.5)
                 pointsf = torch.FloatTensor(pointsf).to(self.device)
-                data["qry"] = pointsf.unsqueeze(0).cuda()
+                data["qry"] = pointsf.unsqueeze(0).to(self.device)
                 # Evaluate model and update
                 values = self.eval_points(data).cpu().numpy()
                 values = values.astype(np.float64)
@@ -277,14 +272,13 @@ class Generator3D(object):
             vertices (numpy array): vertices of the mesh
             c (tensor): encoded feature volumes
         """
-        device = self.device
         vertices = torch.FloatTensor(vertices)
         vertices_split = torch.split(vertices, self.points_batch_size)
 
         normals = []
         c = c.unsqueeze(0)
         for vi in vertices_split:
-            vi = vi.unsqueeze(0).to(device)
+            vi = vi.unsqueeze(0).to(self.device)
             vi.requires_grad_()
             occ_hat = self.model.decode(vi, c).logits
             out = occ_hat.sum()

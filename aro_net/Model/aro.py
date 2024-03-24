@@ -16,7 +16,6 @@ class ARONet(nn.Module):
         cone_angle_th,
         tfm_pos_enc=True,
         cond_pn=True,
-        use_dist_hit=False,
         pn_use_bn=True,
         pred_type="occ",
         norm_coord=False,
@@ -27,7 +26,6 @@ class ARONet(nn.Module):
         self.n_qry = n_qry
         self.cone_angle_th = cone_angle_th
         self.cond_pn = cond_pn
-        self.use_dist_hit = use_dist_hit
         self.pred_type = pred_type
         self.norm_coord = norm_coord
         if self.cond_pn:
@@ -50,8 +48,6 @@ class ARONet(nn.Module):
         self.fc_2 = nn.Sequential(
             nn.Conv1d(128, 128, 1), nn.BatchNorm1d(128), nn.ReLU()
         )
-        if self.use_dist_hit:
-            self.fc_dist_hit = nn.Sequential(nn.Linear(128, 1), nn.Sigmoid())
         if self.tfm_pos_enc:
             self.pos_enc = PositionalEncoding1D(128)
         self.att_layer = nn.TransformerEncoderLayer(
@@ -206,9 +202,5 @@ class ARONet(nn.Module):
             ret_dict["occ_pred"] = pred
         else:
             ret_dict["sdf_pred"] = pred
-
-        if self.use_dist_hit:
-            hit_dist_pred = self.fc_dist_hit(x1).squeeze(-1).transpose(1, 2)
-            ret_dict["dist_hit_pred"] = hit_dist_pred
 
         return ret_dict

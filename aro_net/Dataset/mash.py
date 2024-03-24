@@ -20,7 +20,6 @@ class MashDataset(Dataset):
         # self.n_anc = args.n_anc
         self.n_anc = 40  # FIXME:
         self.n_qry = args.n_qry
-        self.use_dist_hit = args.use_dist_hit
         self.dir_dataset = os.path.join(args.dir_data, args.name_dataset)
         # self.anc_0 = np.load(f'./{args.dir_data}/anchors/sphere{str(self.n_anc)}.npy')
         # self.anc = np.concatenate([self.anc_0[i::3] / (2 ** i) for i in range(3)])
@@ -102,11 +101,6 @@ class MashDataset(Dataset):
 
         sdf = occ
 
-        if self.use_dist_hit and self.split == "train":
-            dist_hit = np.load(
-                f"{self.dir_dataset}/05_hit_dist/{category}/{shape_id}.npy"
-            )
-
         if self.split == "train":
             np.random.seed()
             perm = np.random.permutation(len(qry))[: self.n_qry]
@@ -117,8 +111,6 @@ class MashDataset(Dataset):
             # ftrs = self.get_anchor_feature(qry, anc_param_path)
             ftrs = ftrs[perm]
             # params = parmas[perm, :]
-            if self.use_dist_hit and self.split == "train":
-                dist_hit = dist_hit[:, perm]
         else:
             np.random.seed(1234)
             perm = np.random.permutation(len(qry))[: self.n_qry]
@@ -127,8 +119,6 @@ class MashDataset(Dataset):
             sdf = sdf[perm]
             ftrs = ftrs[perm]
             # params = parmas[perm, :]
-            if self.use_dist_hit and self.split == "train":
-                dist_hit = dist_hit[:, perm]
 
         feed_dict = {
             # 'pcd': torch.tensor(pcd).float(),
@@ -141,8 +131,5 @@ class MashDataset(Dataset):
         }
         if self.split != "train":
             feed_dict["shape_id"] = shape_id
-
-        if self.use_dist_hit and self.split == "train":
-            feed_dict["dist_hit"] = torch.tensor(dist_hit).float()
 
         return feed_dict

@@ -10,9 +10,9 @@ from aro_net.Module.Generator3D.aro import Generator3D
 
 
 def demo():
-    model_file_path = "/home/chli/Models/aro-net/aronet_chairs_gt_occnet.ckpt"
+    model_file_path = "/home/chli/Models/aro-net/aronet_chairs_gt_imnet.ckpt"
     save_result_folder_path = "./output/aro/"
-    device = "cpu"
+    device = "cuda"
 
     args = get_parser().parse_args()
 
@@ -23,7 +23,6 @@ def demo():
         cone_angle_th=args.cone_angle_th,
         tfm_pos_enc=args.tfm_pos_enc,
         cond_pn=args.cond_pn,
-        use_dist_hit=args.use_dist_hit,
         pn_use_bn=args.pn_use_bn,
         pred_type=args.pred_type,
         norm_coord=args.norm_coord,
@@ -36,6 +35,7 @@ def demo():
 
     generator = Generator3D(
         model,
+        device=device,
         threshold=args.mc_threshold,
         resolution0=args.mc_res0,
         upsampling_steps=args.mc_up_steps,
@@ -60,7 +60,9 @@ def demo():
         for idx in tqdm(range(len(dataset))):
             data = dataset[idx]
             for key in data:
-                data[key] = data[key].unsqueeze(0).cuda()
+                data[key] = data[key].unsqueeze(0).to(device)
+                print(key, data[key].shape)
+
             out = generator.generate_mesh(data)
 
             if isinstance(out, trimesh.Trimesh):
@@ -68,7 +70,9 @@ def demo():
             else:
                 mesh = out[0]
 
+            print(mesh)
             path_mesh = save_result_folder_path + str(id_shapes[idx]) + ".obj"
             mesh.export(path_mesh)
+            return
 
     return True

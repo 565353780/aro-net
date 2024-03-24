@@ -119,10 +119,11 @@ class Generator3D(object):
         else:
             return mesh
 
-    def generate_from_latent(self, c=None, stats_dict={}):
+    def generate_from_latent(self, data: dict, c=None, stats_dict={}):
         """Generates mesh from latent.
             Works for shapes normalized to a unit cube
         Args:
+            data (tensor): data tensor
             c (tensor): latent conditioned code c
             stats_dict (dict): stats dictionary
         """
@@ -136,7 +137,7 @@ class Generator3D(object):
         if self.upsampling_steps == 0:
             nx = self.resolution0
             pointsf = box_size * make_3d_grid((-0.5,) * 3, (0.5,) * 3, (nx,) * 3)
-            data["qry"] = pointsf.unsqueeze(0).cuda()
+            data["qry"] = pointsf.unsqueeze(0).to(self.device)
             values = self.eval_points(data).cpu().numpy()
             value_grid = values.reshape(nx, nx, nx)
         else:
@@ -149,7 +150,7 @@ class Generator3D(object):
                 # Normalize to bounding box
                 pointsf = box_size * (pointsf - 0.5)
                 pointsf = torch.FloatTensor(pointsf).to(self.device)
-                data["qry"] = pointsf.unsqueeze(0).cuda()
+                data["qry"] = pointsf.unsqueeze(0).to(self.device)
                 # Evaluate model and update
                 values = self.eval_points(data).cpu().numpy()
                 values = values.astype(np.float64)
@@ -157,6 +158,7 @@ class Generator3D(object):
                 points = mesh_extractor.query()
 
             value_grid = mesh_extractor.to_dense()
+
 
         # Extract mesh
         stats_dict["time (eval points)"] = time.time() - t0
@@ -238,14 +240,13 @@ class Generator3D(object):
             vertices (numpy array): vertices of the mesh
             c (tensor): encoded feature volumes
         """
-        device = self.device
         vertices = torch.FloatTensor(vertices)
         vertices_split = torch.split(vertices, self.points_batch_size)
 
         normals = []
         c = c.unsqueeze(0)
         for vi in vertices_split:
-            vi = vi.unsqueeze(0).to(device)
+            vi = vi.unsqueeze(0).to(self.device)
             vi.requires_grad_()
             occ_hat = self.model.decode(vi, c).logits
             out = occ_hat.sum()
