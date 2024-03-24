@@ -1,0 +1,44 @@
+class Config(object):
+    def __init__(self) -> None:
+        # dataset related
+        self.dir_data = "./data"
+        self.name_dataset = "shapenet"
+        self.name_single = "fertility"
+        self.n_wk = 4
+        self.categories_train = "03001627"
+        self.categories_test = "03001627,02591156,"
+        self.add_noise = 0
+        self.gt_source = "occnet"
+        # ARO-Net hyper-parameters
+        self.n_pts_train = 2048
+        self.n_pts_val = 1024
+        self.cone_angle_th = 15.0
+        self.n_local = 16
+        self.n_anc = 48
+        self.n_qry = 512
+        self.pn_use_bn = False
+        self.cond_pn = False
+        self.tfm_pos_enc = False
+        self.pred_type = "occ"
+        self.norm_coord = False
+        # common hyper-parameters
+        self.mode = "test"
+        self.n_bs = 2
+        self.n_epochs = 600
+        self.lr = 1e-5
+        self.n_dim = 128
+        self.multi_gpu = False
+        self.freq_ckpt = 10
+        self.freq_log = 200
+        self.freq_decay = 100
+        self.weight_decay = 0.5
+        # Marching Cube realted
+        self.mc_chunk_size = 3000
+        self.mc_res0 = 16
+        self.mc_up_steps = 2
+        self.mc_threshold = 0.5
+
+        assert self.name_dataset in ["abc", "shapenet", "single", "custom"]
+        assert self.pred_type in ["occ", "sdf"]
+        assert self.mode in ["train", "test"]
+        return

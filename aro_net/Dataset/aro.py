@@ -3,38 +3,43 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 
+from aro_net.Config.config import ARO_CONFIG
 from aro_net.Method.mesh import load_mesh
 
 
 class ARONetDataset(Dataset):
-    def __init__(self, split, args) -> None:
+    def __init__(self, split) -> None:
         self.split = split
-        self.n_anc = args.n_anc
-        self.n_qry = args.n_qry
-        self.dir_dataset = os.path.join(args.dir_data, args.name_dataset)
-        self.anc_0 = np.load(f"./{args.dir_data}/anchors/sphere{str(self.n_anc)}.npy")
+        self.n_anc = ARO_CONFIG.n_anc
+        self.n_qry = ARO_CONFIG.n_qry
+        self.dir_dataset = os.path.join(ARO_CONFIG.dir_data, ARO_CONFIG.name_dataset)
+        self.anc_0 = np.load(
+            f"./{ARO_CONFIG.dir_data}/anchors/sphere{str(self.n_anc)}.npy"
+        )
         self.anc = np.concatenate([self.anc_0[i::3] / (2**i) for i in range(3)])
-        self.name_dataset = args.name_dataset
-        self.n_pts_train = args.n_pts_train
-        self.n_pts_val = args.n_pts_val
-        self.n_pts_test = args.n_pts_test
-        self.gt_source = args.gt_source
+        self.name_dataset = ARO_CONFIG.name_dataset
+        self.n_pts_train = ARO_CONFIG.n_pts_train
+        self.n_pts_val = ARO_CONFIG.n_pts_val
+        self.n_pts_test = ARO_CONFIG.n_pts_test
+        self.gt_source = ARO_CONFIG.gt_source
         self.files = []
         if self.name_dataset == "shapenet":
             if self.split in {"train", "val"}:
-                categories = args.categories_train.split(",")[:-1]
+                categories = ARO_CONFIG.categories_train.split(",")[:-1]
             else:
-                categories = args.categories_test.split(",")[:-1]
+                categories = ARO_CONFIG.categories_test.split(",")[:-1]
             self.fext_mesh = "obj"
         else:
             categories = [""]
             self.fext_mesh = "ply"
         for category in categories:
-            id_shapes = (
-                open(f"{self.dir_dataset}/04_splits/{category}/{split}.lst")
-                .read()
-                .split()
+            split_file_path = (
+                self.dir_dataset + "/04_splits/" + category + "/" + split + ".lst"
             )
+            assert os.path.exists(split_file_path), split_file_path + " not exist!"
+            with open(split_file_path, "r") as f:
+                id_shapes = f.read().split()
+
             for shape_id in id_shapes:
                 self.files.append((category, shape_id))
 

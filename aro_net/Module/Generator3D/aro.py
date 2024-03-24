@@ -8,6 +8,7 @@ import torch.optim as optim
 from torch import autograd
 from tqdm import trange
 
+from aro_net.Config.config import ARO_CONFIG
 from aro_net.Lib import libmcubes
 from aro_net.Lib.libmise import MISE
 from aro_net.Lib.common import make_3d_grid
@@ -38,27 +39,26 @@ class Generator3D(object):
         self,
         model,
         points_batch_size=100000,
-        threshold=0.5,
         refinement_step=0,
-        device=None,
-        resolution0=64,
-        upsampling_steps=2,
-        chunk_size=3000,
         with_normals=False,
         padding=0.1,
         sample=False,
+        device=ARO_CONFIG.device,
+        threshold=ARO_CONFIG.mc_threshold,
+        resolution0=ARO_CONFIG.mc_res0,
+        upsampling_steps=ARO_CONFIG.mc_up_steps,
+        chunk_size=ARO_CONFIG.mc_chunk_size,
+        pred_type=ARO_CONFIG.pred_type,
         input_type=None,
         vol_info=None,
         vol_bound=None,
         simplify_nfaces=None,
-        pred_type="occ",
     ):
-        # self.model = model.to(device)
         self.model = model
+        self.device = device
         self.points_batch_size = points_batch_size
         self.refinement_step = refinement_step
         self.threshold = threshold
-        self.device = device
         self.resolution0 = resolution0
         self.upsampling_steps = upsampling_steps
         self.with_normals = with_normals
@@ -158,7 +158,6 @@ class Generator3D(object):
                 points = mesh_extractor.query()
 
             value_grid = mesh_extractor.to_dense()
-
 
         # Extract mesh
         stats_dict["time (eval points)"] = time.time() - t0

@@ -104,7 +104,8 @@ def samplePcdQueryPoints(
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
 
-    fps_sample_points = pcd.farthest_point_down_sample(num_query_pts_close)
+    fps_sample_pcd = pcd.farthest_point_down_sample(num_query_pts_close)
+    fps_sample_points = np.asarray(fps_sample_pcd.points)
 
     gaussian_noise = np.random.normal(
         patch_radius / 2.0, patch_radius / 2.0, [num_query_pts_close, 3]

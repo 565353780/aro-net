@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 
+from aro_net.Config.config import ARO_CONFIG
 from aro_net.Model.positional_encoding_1d import PositionalEncoding1D
 from aro_net.Model.PointNet.resnet import ResnetPointnet
 from aro_net.Model.PointNet.resnet_cond_bn import ResnetPointnetCondBN
@@ -10,15 +11,15 @@ from aro_net.Model.PointNet.resnet_cond_bn import ResnetPointnetCondBN
 class ARONet(nn.Module):
     def __init__(
         self,
-        n_anc,
-        n_qry,
-        n_local,
-        cone_angle_th,
-        tfm_pos_enc=True,
-        cond_pn=True,
-        pn_use_bn=True,
-        pred_type="occ",
-        norm_coord=False,
+        n_anc=ARO_CONFIG.n_anc,
+        n_qry=ARO_CONFIG.n_qry,
+        n_local=ARO_CONFIG.n_local,
+        cone_angle_th=ARO_CONFIG.cone_angle_th,
+        tfm_pos_enc=ARO_CONFIG.tfm_pos_enc,
+        cond_pn=ARO_CONFIG.cond_pn,
+        pn_use_bn=ARO_CONFIG.pn_use_bn,
+        pred_type=ARO_CONFIG.pred_type,
+        norm_coord=ARO_CONFIG.norm_coord,
     ):
         super().__init__()
         self.n_anc = n_anc
@@ -126,7 +127,7 @@ class ARONet(nn.Module):
         vec_anc2qry = qry[:, :, None, :] - anc[:, None, :, :]
         mod_anc2qry = torch.linalg.norm(vec_anc2qry, axis=-1)[..., None]
         norm_anc2qry = torch.div(vec_anc2qry, mod_anc2qry.expand(-1, -1, -1, 3))
-        if self.norm_coord == True:
+        if self.norm_coord:
             feat_anc2qry = torch.cat([norm_anc2qry, mod_anc2qry], -1)
         else:
             feat_anc2qry = torch.cat([vec_anc2qry, mod_anc2qry], -1)
@@ -137,7 +138,7 @@ class ARONet(nn.Module):
             mod_qry2hit * (1 - mask_padded) + 1.0 * mask_padded
         )  # avoiding divide by 0
         norm_qry2hit = torch.div(vec_qry2hit, mod_qry2hit_)
-        if self.norm_coord == True:
+        if self.norm_coord:
             feat_qry2hit = torch.cat([norm_qry2hit, mod_qry2hit], -1)
         else:
             feat_qry2hit = torch.cat([vec_qry2hit, mod_qry2hit], -1)
