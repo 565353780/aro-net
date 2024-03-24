@@ -2,7 +2,7 @@ import math
 import torch
 import numpy as np
 
-from aro_net.Lib.libkdtree import KDTree
+from pykdtree.kdtree import KDTree
 
 
 def compute_iou(occ1, occ2):

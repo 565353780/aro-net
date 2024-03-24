@@ -1,4 +1,4 @@
-pip install trimesh open3d tensorboard Cython
+pip install trimesh open3d tensorboard Cython pykdtree
 
 cd ..
 git clone https://github.com/kacperkan/light-field-distance

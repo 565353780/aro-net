@@ -1,5 +1,6 @@
 import os
 import torch
+import trimesh
 from tqdm import tqdm
 
 from aro_net.Config.config import get_parser
@@ -9,6 +10,10 @@ from aro_net.Module.Generator3D.aro import Generator3D
 
 
 def demo():
+    model_file_path = "/home/chli/Models/aro-net/aronet_chairs_gt_occnet.ckpt"
+    save_result_folder_path = "./output/aro/"
+    device = "cpu"
+
     args = get_parser().parse_args()
 
     model = ARONet(
@@ -23,14 +28,11 @@ def demo():
         pred_type=args.pred_type,
         norm_coord=args.norm_coord,
     )
-    path_ckpt = os.path.join("experiments", args.name_exp, "ckpt", args.name_ckpt)
-    model.load_state_dict(torch.load(path_ckpt)["model"])
-    model = model.cuda()
+    model.load_state_dict(torch.load(model_file_path)["model"])
+    model = model.to(device)
     model = model.eval()
 
-    path_res = os.path.join("experiments", args.name_exp, "results", args.name_dataset)
-    if not os.path.exists(path_res):
-        os.makedirs(path_res)
+    os.makedirs(save_result_folder_path, exist_ok=True)
 
     generator = Generator3D(
         model,
@@ -60,12 +62,13 @@ def demo():
             for key in data:
                 data[key] = data[key].unsqueeze(0).cuda()
             out = generator.generate_mesh(data)
-            try:
-                mesh, stats_dict = out
-            except TypeError:
-                mesh, stats_dict = out, {}
 
-            path_mesh = os.path.join(path_res, "%s.obj" % id_shapes[idx])
+            if isinstance(out, trimesh.Trimesh):
+                mesh = out
+            else:
+                mesh = out[0]
+
+            path_mesh = save_result_folder_path + str(id_shapes[idx]) + ".obj"
             mesh.export(path_mesh)
 
     return True
