@@ -1,4 +1,3 @@
-import os
 import time
 import math
 import torch
@@ -7,19 +6,12 @@ import numpy as np
 import torch.optim as optim
 
 from torch import autograd
-from tqdm import trange, tqdm
-
-from aro_net.Config.config import get_parser
+from tqdm import trange
 
 from aro_net.Lib import libmcubes
 from aro_net.Lib.libmise import MISE
 from aro_net.Lib.common import make_3d_grid
 from aro_net.Lib.libsimplify import simplify_mesh
-
-from aro_net.Model.mash import MashNet
-from aro_net.Dataset.mash import MashDataset
-
-from aro_net.Method.feature import get_anchor_feature
 
 
 class Generator3D(object):
@@ -51,7 +43,7 @@ class Generator3D(object):
         device=None,
         resolution0=64,
         upsampling_steps=2,
-        chunk_size=512,
+        chunk_size=3000,
         with_normals=False,
         padding=0.1,
         sample=False,
@@ -75,7 +67,6 @@ class Generator3D(object):
         self.sample = sample
         self.simplify_nfaces = simplify_nfaces
         self.chunk_size = chunk_size
-        # self.chunk_size = 512 # FIXME
         self.pred_type = pred_type
         # for pointcloud_crop
         self.vol_bound = vol_bound
@@ -83,31 +74,7 @@ class Generator3D(object):
             self.input_vol, _, _ = vol_info
 
     def eval_points(self, data):
-        # n_qry = data['ftrs'].shape[1]
-        qry_pts = data["qry"]
-        n_qry = qry_pts.shape[1]
-
-        shape_id = data["shape_id"]
-
-        anc_param_path = f"./data/shapenet/05_asdf_anchor/02691156/{shape_id}.npy"
-        q_ftrs = get_anchor_feature(qry_pts.cpu().numpy().squeeze(), anc_param_path)
-        print(q_ftrs.shape)
-
-        anc_params = np.load(anc_param_path, allow_pickle=True).item()
-        params = anc_params["best_params"]
-        n_ftrs = q_ftrs.shape[0]
-        # print(ftrs.shape)
-        params = np.tile(params[np.newaxis, :, :], reps=(n_ftrs, 1, 1))
-        # print(params.shape)
-        print(params.shape)
-        q_ftrs = np.concatenate((params, q_ftrs), axis=-1)
-
-        q_ftrs = (
-            torch.tensor(np.expand_dims(q_ftrs, axis=0))
-            .to(device=torch.device("cuda"))
-            .to(torch.float32)
-        )
-
+        n_qry = data["qry"].shape[1]
         chunk_size = self.chunk_size
         n_chunk = math.ceil(n_qry / chunk_size)
 
@@ -116,19 +83,13 @@ class Generator3D(object):
         for idx in range(n_chunk):
             data_chunk = {}
             for key in data:
-                if key == "ftrs":
-                    continue
                 if key == "qry":
                     if idx < n_chunk - 1:
                         data_chunk[key] = data[key][
                             :, chunk_size * idx : chunk_size * (idx + 1), ...
                         ]
-                        data_chunk["ftrs"] = q_ftrs[
-                            :, chunk_size * idx : chunk_size * (idx + 1), ...
-                        ]
                     else:
                         data_chunk[key] = data[key][:, chunk_size * idx : n_qry, ...]
-                        data_chunk["ftrs"] = q_ftrs[:, chunk_size * idx : n_qry, ...]
                 else:
                     data_chunk[key] = data[key]
 
@@ -358,73 +319,3 @@ class Generator3D(object):
         mesh.vertices = v.data.cpu().numpy()
 
         return mesh
-
-
-if __name__ == "__main__":
-    args = get_parser().parse_args()
-
-    n_anc = 40  # FIXME
-    model = MashNet(
-        n_anc=n_anc,
-        n_qry=args.n_qry,
-        n_local=args.n_local,
-        cone_angle_th=args.cone_angle_th,
-        tfm_pos_enc=args.tfm_pos_enc,
-        cond_pn=args.cond_pn,
-        use_dist_hit=args.use_dist_hit,
-        pn_use_bn=args.pn_use_bn,
-        pred_type=args.pred_type,
-        norm_coord=args.norm_coord,
-    )
-    path_ckpt = os.path.join("experiments", args.name_exp, "ckpt", args.name_ckpt)
-    model.load_state_dict(torch.load(path_ckpt)["model"])
-    model = model.cuda()
-    model = model.eval()
-
-    path_res = os.path.join("experiments", args.name_exp, "results", args.name_dataset)
-    if not os.path.exists(path_res):
-        os.makedirs(path_res)
-
-    generator = Generator3D(
-        model,
-        threshold=args.mc_threshold,
-        resolution0=args.mc_res0,
-        upsampling_steps=args.mc_up_steps,
-        chunk_size=args.mc_chunk_size,
-        pred_type=args.pred_type,
-    )
-    # dataset = ARONetDataset(split='test', args=args)
-    dataset = MashDataset(split="asdf_test", args=args)  # FIXME
-
-    dir_dataset = os.path.join(args.dir_data, args.name_dataset)
-    if args.name_dataset == "shapenet":
-        # categories = args.categories_test.split(',')[:-1]
-        categories = ["02691156"]
-        id_shapes = []
-        for category in categories:
-            print(category)
-            id_shapes_ = (
-                open(f"{dir_dataset}/04_splits/{category}/asdf_test.lst")
-                .read()
-                .split("\n")
-            )
-            id_shapes += id_shapes_
-
-    else:
-        id_shapes = open(f"{dir_dataset}/04_splits/test.lst").read().split("\n")
-
-    with torch.no_grad():
-        for idx in tqdm(range(len(dataset))):
-            data = dataset[idx]
-            for key in data:
-                if key == "shape_id":
-                    continue
-                data[key] = data[key].unsqueeze(0).cuda()
-            out = generator.generate_mesh(data)
-            try:
-                mesh, stats_dict = out
-            except TypeError:
-                mesh, stats_dict = out, {}
-
-            path_mesh = os.path.join(path_res, "%s.obj" % id_shapes[idx])
-            mesh.export(path_mesh)

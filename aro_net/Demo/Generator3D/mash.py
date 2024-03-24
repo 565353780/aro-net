@@ -1,30 +1,19 @@
 import os
-import time
-import math
 import torch
-import trimesh
-import numpy as np
-import torch.optim as optim
-
-from torch import autograd
-from tqdm import trange, tqdm
+from tqdm import tqdm
 
 from aro_net.Config.config import get_parser
-
-from aro_net.Lib import libmcubes
-from aro_net.Lib.libmise import MISE
-from aro_net.Lib.common import make_3d_grid
-from aro_net.Lib.libsimplify import simplify_mesh
-
-from aro_net.Model.aro import ARONet
-from aro_net.Dataset.aro import ARONetDataset
+from aro_net.Model.mash import MashNet
+from aro_net.Dataset.mash import MashDataset
+from aro_net.Module.Generator3D.mash import Generator3D
 
 
-if __name__ == "__main__":
+def demo():
     args = get_parser().parse_args()
 
-    model = ARONet(
-        n_anc=args.n_anc,
+    n_anc = 40  # FIXME
+    model = MashNet(
+        n_anc=n_anc,
         n_qry=args.n_qry,
         n_local=args.n_local,
         cone_angle_th=args.cone_angle_th,
@@ -52,24 +41,32 @@ if __name__ == "__main__":
         chunk_size=args.mc_chunk_size,
         pred_type=args.pred_type,
     )
-    dataset = ARONetDataset(split="test", args=args)
+    # dataset = ARONetDataset(split='test', args=args)
+    dataset = MashDataset(split="asdf_test", args=args)  # FIXME
 
     dir_dataset = os.path.join(args.dir_data, args.name_dataset)
     if args.name_dataset == "shapenet":
-        categories = args.categories_test.split(",")[:-1]
+        # categories = args.categories_test.split(',')[:-1]
+        categories = ["02691156"]
         id_shapes = []
         for category in categories:
+            print(category)
             id_shapes_ = (
-                open(f"{dir_dataset}/04_splits/{category}/test.lst").read().split("\n")
+                open(f"{dir_dataset}/04_splits/{category}/asdf_test.lst")
+                .read()
+                .split("\n")
             )
             id_shapes += id_shapes_
 
     else:
         id_shapes = open(f"{dir_dataset}/04_splits/test.lst").read().split("\n")
+
     with torch.no_grad():
         for idx in tqdm(range(len(dataset))):
             data = dataset[idx]
             for key in data:
+                if key == "shape_id":
+                    continue
                 data[key] = data[key].unsqueeze(0).cuda()
             out = generator.generate_mesh(data)
             try:
@@ -79,3 +76,5 @@ if __name__ == "__main__":
 
             path_mesh = os.path.join(path_res, "%s.obj" % id_shapes[idx])
             mesh.export(path_mesh)
+
+    return True

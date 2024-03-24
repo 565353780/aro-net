@@ -1,3 +1,27 @@
+import os
+import time
+import math
+import torch
+import trimesh
+import numpy as np
+import torch.optim as optim
+
+from torch import autograd
+from tqdm import trange, tqdm
+
+from aro_net.Config.config import get_parser
+
+from aro_net.Lib import libmcubes
+from aro_net.Lib.libmise import MISE
+from aro_net.Lib.common import make_3d_grid
+from aro_net.Lib.libsimplify import simplify_mesh
+
+from aro_net.Model.mash import MashNet
+from aro_net.Dataset.mash import MashDataset
+
+from aro_net.Method.feature import get_anchor_feature
+
+
 class Generator3D(object):
     """Generator class for Occupancy Networks.
     It provides functions to generate the final mesh as well refining options.
@@ -27,7 +51,7 @@ class Generator3D(object):
         device=None,
         resolution0=64,
         upsampling_steps=2,
-        chunk_size=3000,
+        chunk_size=512,
         with_normals=False,
         padding=0.1,
         sample=False,
@@ -51,6 +75,7 @@ class Generator3D(object):
         self.sample = sample
         self.simplify_nfaces = simplify_nfaces
         self.chunk_size = chunk_size
+        # self.chunk_size = 512 # FIXME
         self.pred_type = pred_type
         # for pointcloud_crop
         self.vol_bound = vol_bound
@@ -58,7 +83,31 @@ class Generator3D(object):
             self.input_vol, _, _ = vol_info
 
     def eval_points(self, data):
-        n_qry = data["qry"].shape[1]
+        # n_qry = data['ftrs'].shape[1]
+        qry_pts = data["qry"]
+        n_qry = qry_pts.shape[1]
+
+        shape_id = data["shape_id"]
+
+        anc_param_path = f"./data/shapenet/05_asdf_anchor/02691156/{shape_id}.npy"
+        q_ftrs = get_anchor_feature(qry_pts.cpu().numpy().squeeze(), anc_param_path)
+        print(q_ftrs.shape)
+
+        anc_params = np.load(anc_param_path, allow_pickle=True).item()
+        params = anc_params["best_params"]
+        n_ftrs = q_ftrs.shape[0]
+        # print(ftrs.shape)
+        params = np.tile(params[np.newaxis, :, :], reps=(n_ftrs, 1, 1))
+        # print(params.shape)
+        print(params.shape)
+        q_ftrs = np.concatenate((params, q_ftrs), axis=-1)
+
+        q_ftrs = (
+            torch.tensor(np.expand_dims(q_ftrs, axis=0))
+            .to(device=torch.device("cuda"))
+            .to(torch.float32)
+        )
+
         chunk_size = self.chunk_size
         n_chunk = math.ceil(n_qry / chunk_size)
 
@@ -67,13 +116,19 @@ class Generator3D(object):
         for idx in range(n_chunk):
             data_chunk = {}
             for key in data:
+                if key == "ftrs":
+                    continue
                 if key == "qry":
                     if idx < n_chunk - 1:
                         data_chunk[key] = data[key][
                             :, chunk_size * idx : chunk_size * (idx + 1), ...
                         ]
+                        data_chunk["ftrs"] = q_ftrs[
+                            :, chunk_size * idx : chunk_size * (idx + 1), ...
+                        ]
                     else:
                         data_chunk[key] = data[key][:, chunk_size * idx : n_qry, ...]
+                        data_chunk["ftrs"] = q_ftrs[:, chunk_size * idx : n_qry, ...]
                 else:
                     data_chunk[key] = data[key]
 
