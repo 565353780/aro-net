@@ -16,7 +16,7 @@ from aro_net.Model.mash import MashNet
 
 from aro_net.Module.logger import Logger
 
-mode = "aro"
+mode = "mash"
 
 match mode:
     case "aro":
@@ -29,6 +29,7 @@ match mode:
         NET = ARONet
     case "mash":
         from aro_net.Dataset.mash import MashDataset
+
         CONFIG = MASH_CONFIG
         DATASET = MashDataset
         NET = MashNet

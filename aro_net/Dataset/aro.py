@@ -4,7 +4,6 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from aro_net.Config.config import ARO_CONFIG
-from aro_net.Method.mesh import load_mesh
 
 
 class ARONetDataset(Dataset):
@@ -47,70 +46,47 @@ class ARONetDataset(Dataset):
 
     def __getitem__(self, index):
         category, shape_id = self.files[index]
-        # For shapenet dataset: when do training and validation, we use the pcd, qry, occ provided by occ-net or im-net;
-        # when do testing, we input the points sampled from shapenet original mesh
+
         if self.split == "train":
-            if self.name_dataset == "shapenet":
-                pcd = np.load(
-                    f"{self.dir_dataset}/01_pcds/{category}/occnet/{shape_id}.npy"
-                )
-                np.random.seed()
-                perm = np.random.permutation(len(pcd))[: self.n_pts_train]
-                pcd = pcd[perm]
-            else:
-                mesh = load_mesh(
-                    f"{self.dir_dataset}/00_meshes/{category}/{shape_id}.{self.fext_mesh}"
-                )
-                pcd = mesh.sample(self.n_pts_train)
+            pcd = np.load(
+                f"{self.dir_dataset}/01_pcds/{category}/occnet/{shape_id}.npy"
+            )
+            np.random.seed()
+            perm = np.random.permutation(len(pcd))[: self.n_pts_train]
+            pcd = pcd[perm]
         elif self.split == "val":
-            if self.name_dataset == "shapenet":
-                pcd = np.load(
-                    f"{self.dir_dataset}/01_pcds/{category}/occnet/{shape_id}.npy"
-                )
-                np.random.seed(1234)
-                perm = np.random.permutation(len(pcd))[: self.n_pts_val]
-                pcd = pcd[perm]
-            else:
-                pcd = np.load(
-                    f"{self.dir_dataset}/01_pcds/{category}/{str(self.n_pts_val)}/{shape_id}.npy"
-                )
+            pcd = np.load(
+                f"{self.dir_dataset}/01_pcds/{category}/occnet/{shape_id}.npy"
+            )
+            np.random.seed(1234)
+            perm = np.random.permutation(len(pcd))[: self.n_pts_val]
+            pcd = pcd[perm]
         else:
             pcd = np.load(
                 f"{self.dir_dataset}/01_pcds/{category}/{str(self.n_pts_test)}/{shape_id}.npy"
             )
 
-        if self.name_dataset == "shapenet":
-            qry = np.load(
-                f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id}.npy"
-            )
-            occ = np.load(
-                f"{self.dir_dataset}/03_qry_occs_occnet/{category}/{shape_id}.npy"
-            )
-            sdf = occ
-        else:
-            qry = np.load(f"{self.dir_dataset}/02_qry_pts/{category}/{shape_id}.npy")
-            sdf = np.load(f"{self.dir_dataset}/03_qry_dists/{category}/{shape_id}.npy")
-            occ = (sdf >= 0).astype(np.float32)  # sdf >= 0 means occ = 1
+        qry = np.load(f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id}.npy")
+        occ = np.load(
+            f"{self.dir_dataset}/03_qry_occs_occnet/{category}/{shape_id}.npy"
+        )
 
         if self.split == "train":
             np.random.seed()
             perm = np.random.permutation(len(qry))[: self.n_qry]
             qry = qry[perm]
             occ = occ[perm]
-            sdf = sdf[perm]
         else:
             np.random.seed(1234)
             perm = np.random.permutation(len(qry))[: self.n_qry]
             qry = qry[perm]
             occ = occ[perm]
-            sdf = sdf[perm]
 
         feed_dict = {
             "pcd": torch.tensor(pcd).float(),
             "qry": torch.tensor(qry).float(),
             "anc": torch.tensor(self.anc).float(),
             "occ": torch.tensor(occ).float(),
-            "sdf": torch.tensor(sdf).float(),
         }
 
         return feed_dict

@@ -2,8 +2,6 @@ import torch.nn as nn
 
 from aro_net.Config.config import MASH_CONFIG
 from aro_net.Model.positional_encoding_1d import PositionalEncoding1D
-from aro_net.Model.PointNet.resnet import ResnetPointnet
-from aro_net.Model.PointNet.resnet_cond_bn import ResnetPointnetCondBN
 
 
 class MashNet(nn.Module):
@@ -15,7 +13,6 @@ class MashNet(nn.Module):
         cone_angle_th=MASH_CONFIG.cone_angle_th,
         tfm_pos_enc=MASH_CONFIG.tfm_pos_enc,
         cond_pn=MASH_CONFIG.cond_pn,
-        pn_use_bn=MASH_CONFIG.pn_use_bn,
     ):
         super().__init__()
         # FIXME check if the anchor is same as asdf
@@ -29,12 +26,6 @@ class MashNet(nn.Module):
         self.n_qry = n_qry
         self.cone_angle_th = cone_angle_th
         self.cond_pn = cond_pn
-        if self.cond_pn:
-            self.point_net = ResnetPointnetCondBN(dim=4, reduce=True)
-        else:
-            self.point_net = ResnetPointnet(
-                dim=4, reduce=True, size_aux=(n_anc, n_local), use_bn=pn_use_bn
-            )
         self.tfm_pos_enc = tfm_pos_enc
         if self.cond_pn:
             self.fc_cond_1 = nn.Sequential(
@@ -50,17 +41,11 @@ class MashNet(nn.Module):
 
         # the input ftrs size is n_anc x 5 for [phi, theta, dq, is_in_mask, dist_from_sh]
         self.fc_1 = nn.Sequential(
-            nn.Conv1d(30, self.hidden_dim // 2, 1),  # FIXME
-            nn.BatchNorm1d(self.hidden_dim // 2),
-            nn.ReLU(),
-            nn.Conv1d(self.hidden_dim // 2, self.hidden_dim, 1),  # FIXME
+            nn.Conv1d(30, self.hidden_dim, 1),  # FIXME
             nn.BatchNorm1d(self.hidden_dim),
             nn.ReLU(),
         )
         self.fc_2 = nn.Sequential(
-            nn.Conv1d(self.hidden_dim, self.hidden_dim, 1),
-            nn.BatchNorm1d(self.hidden_dim),
-            nn.ReLU(),
             nn.Conv1d(self.hidden_dim, self.hidden_dim, 1),
             nn.BatchNorm1d(self.hidden_dim),
             nn.ReLU(),
@@ -71,14 +56,7 @@ class MashNet(nn.Module):
             d_model=self.hidden_dim, nhead=8, batch_first=True
         )
         self.att_decoder = nn.TransformerEncoder(self.att_layer, num_layers=6)
-        self.fc_out = nn.Sequential(
-            nn.Conv1d(
-                self.n_anc * self.hidden_dim, self.n_anc * self.hidden_dim // 2, 1
-            ),
-            nn.Tanh(),
-            nn.Conv1d(self.n_anc * self.hidden_dim // 2, 1, 1),
-            nn.Tanh(),
-        )
+        self.fc_out = nn.Conv1d(self.n_anc * self.hidden_dim, 1, 1)
 
     def forward(self, feed_dict):
         qry, ftrs = feed_dict["qry"], feed_dict["ftrs"]

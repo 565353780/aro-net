@@ -1,13 +1,10 @@
-import os
-
-
 class Config(object):
     def __init__(self) -> None:
         # dataset related
         self.dir_data = "./data"
         self.name_dataset = "shapenet"
         self.name_single = "fertility"
-        self.n_wk = os.cpu_count()
+        self.n_wk = 4
         self.categories_train = ["02691156"]
         self.categories_test = ["02691156", "03001627"]
         self.add_noise = 0
@@ -27,9 +24,8 @@ class Config(object):
         self.mode = "test"
         self.n_bs = 2
         self.n_epochs = 600
-        self.lr = 1e-5
-        self.n_dim = 128
-        self.freq_decay = 100
+        self.lr = 1e-6
+        self.freq_decay = 1
         self.weight_decay = 0.5
         # Marching Cube realted
         self.mc_chunk_size = 3000

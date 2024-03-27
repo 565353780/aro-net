@@ -4,7 +4,6 @@ from tqdm import tqdm
 from math import ceil
 from typing import Tuple
 
-from aro_net.Method.sample import sampleQueryPoints
 from aro_net.Method.feature import toMashFileAnchorFeature
 
 
