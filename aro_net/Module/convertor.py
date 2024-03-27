@@ -3,6 +3,9 @@ import numpy as np
 from math import ceil
 from typing import Tuple
 
+from aro_net.Method.sample import sampleQueryPoints
+from aro_net.Method.feature import getMashAnchorFeature
+
 
 class Convertor(object):
     def __init__(self, dataset_root_folder_path: str) -> None:
@@ -67,4 +70,27 @@ class Convertor(object):
         with open(save_split_folder_path + "test.lst", "w") as f:
             for test_name in test_split:
                 f.write(test_name + "\n")
+        return True
+
+    def convertToAnchorFeatures(self, save_feature_folder_path: str) -> bool:
+        if not os.path.exists(self.dataset_root_folder_path):
+            print("[ERROR][Convertor::convertToSplits]")
+            print("\t dataset root folder not exist!")
+            print("\t dataset_root_folder_path:", self.dataset_root_folder_path)
+            return False
+
+        os.makedirs(save_feature_folder_path, exist_ok=True)
+
+        filename_list = os.listdir(self.dataset_root_folder_path)
+
+        for filename in filename_list:
+            file_path = self.dataset_root_folder_path + filename
+
+            points = np.random.randn(1000, 3)
+            query_points = sampleQueryPoints(points, 512)
+
+            anchor_feature = getMashAnchorFeature(file_path, query_points)
+            print(anchor_feature.shape)
+            exit()
+
         return True

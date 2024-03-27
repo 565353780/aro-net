@@ -1,66 +1,84 @@
-import sys
-
-sys.path.append("../ma-sh")
-
+import torch
+import mash_cpp
 import numpy as np
-from ma_sh.Model.Mash import Mash
+from typing import Union
+
+from ma_sh.Model.mash import Mash
 
 
-def get_anchor_feature(qry: np.array, anc_param_path: str) -> np.array:
+def getMashAnchorFeature(
+    mash_params_file_path: str, query_points: Union[torch.Tensor, np.ndarray]
+) -> torch.Tensor:
     """receive a qry numpy array, output the anchor feature from each anchor
 
-    Args:
-       qry (np.array): query points np array
-       anc_param_path (str): for example, "/path/to/your/anchor_param.npy
-
     Returns:
-       np.array: num_anchor x 5. 5 stands for the feature of each anchor: [\theta, \phi, d_q, 1/0, d].
-       \theta, \phi is the spherical coordinate of the query point from the anchor;
+       np.ndarray: num_anchor x 5. 5 stands for the feature of each anchor: [theta, phi, d_q, 1/0, d].
+       theta, phi is the spherical coordinate of the query point from the anchor;
        d_q is the distance between query point and the anchor;
        1/0 is whether the query point is within the  anchor's mask;
        d is the distance on the SH sphere, which is the distance between the anchor and the surface along the line of the query point and the anchor, d=0 if the query point is not within the mask.
     """
-    mash = Mash().fromParamsFile(anc_param_path)
+    mask_boundary_sample_num = 36
+    sample_polar_num = 2000
+    sample_point_scale = 0.8
+    idx_dtype = torch.int64
+    dtype = torch.float64
+    device = "cpu"
 
-    anc_pos = np.load(anc_param_path, allow_pickle=True).item()["params"][:, :3]
+    if isinstance(query_points, np.ndarray):
+        query_points = torch.from_numpy(query_points)
+
+    mash = Mash.fromParamsFile(
+        mash_params_file_path,
+        mask_boundary_sample_num,
+        sample_polar_num,
+        sample_point_scale,
+        idx_dtype,
+        dtype,
+        device,
+    )
 
     ftrs = []
-    for i in range(asdf_model.anchorNum()):
-        print(f"processing {i}'th anchor...")
-        global_directions = Directions.from_numpy(anc_pos[i, :] - qry)  # n_qry x 1
-        theta_and_phi = global_directions.toPolars().numpy()  # n_qry x 2
+    for i in range(mash.anchor_num):
+        inv_rotate_matrix = mash_cpp.toSingleRotateMatrix(-mash.rotate_vectors[i])
 
-        dq = np.linalg.norm(anc_pos[i, :] - qry, axis=1)  # n_qry x 1
-        dq = dq.reshape(-1, 1)
+        local_rotate_query_points = query_points - mash.positions[i]
 
-        # global_directions  = toData(global_directions, 'numpy')
-        global_directions = global_directions.numpy()
-        in_anchor_i_mask_bool = asdf_model.getAnchorInMaskDirectionMask(
-            i, global_directions
+        local_query_points = torch.matmul(local_rotate_query_points, inv_rotate_matrix)
+
+        local_query_dists = torch.norm(local_query_points, p=2, dim=1)
+
+        local_query_directions = local_query_points / local_query_dists.reshape(-1, 1)
+
+        local_polars = mash_cpp.toPolars(local_query_directions)
+
+        local_mask_boundary_thetas = mash_cpp.toSingleMaskBoundaryThetas(
+            mash.mask_degree_max, mash.mask_params[i], local_polars[:, 0]
         )
-        in_anchor_i_mask_bool = toData(in_anchor_i_mask_bool, "numpy")  # n_qry x 1 ?
 
-        is_in_mask_float64 = in_anchor_i_mask_bool.astype(np.float64)
+        in_mask_mask = local_polars[:, 1] <= local_mask_boundary_thetas
 
-        # d_list = np.zeros_like(is_in_mask_float64, dtype=np.float64)
-        global_directions = toData(global_directions, "torch")
-        d_list = asdf_model.getAnchorDetectSHDists(i, global_directions)
-        d_list = toData(d_list, "numpy")
+        sh_dists = mash_cpp.toSingleSHDists(
+            mash.sh_degree_max,
+            mash.sh_params[i],
+            local_polars[:, 0],
+            local_polars[:, 1],
+        )
 
-        for i_qry, is_true in np.ndenumerate(in_anchor_i_mask_bool):
-            if not is_true:  # FIXME
-                d_list[i_qry] = 0
+        # FIXME: need to set out of range point dists to 0?
+        sh_dists[~in_mask_mask] = 0.0
 
-        is_in_mask_float64 = (
-            np.asarray(is_in_mask_float64).reshape(-1, 1).astype(np.float64)
-        )  # n_qry x 1
-        d_list = np.array(d_list).reshape(-1, 1)  # n_qry x 1
+        label_polars = local_polars.type(torch.float64)
+        label_dists = local_query_dists.reshape(-1, 1).type(torch.float64)
+        label_in_mask = in_mask_mask.reshape(-1, 1).type(torch.float64)
+        label_sh_dists = sh_dists.reshape(-1, 1).type(torch.float64)
 
-        ftr = np.hstack((theta_and_phi, dq, is_in_mask_float64, d_list))
+        ftr = torch.hstack(
+            (label_polars, label_dists, label_in_mask, label_sh_dists)
+        ).reshape(1, -1, 5)
         ftrs.append(ftr)
 
-    ftrs = np.asarray(ftrs)
-    print(ftrs.shape)
-    ftrs = ftrs.transpose(1, 0, 2)
+    ftrs = torch.vstack(ftrs)
+    ftrs = ftrs.permute(1, 0, 2)
 
-    return np.asarray(ftrs)
+    return ftrs

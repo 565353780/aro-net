@@ -29,7 +29,7 @@ class MashDataset(Dataset):
         for category in categories:
             if self.split == "train":
                 id_shapes = (
-                    open(f"{self.dir_dataset}/04_splits/{category}/asdf.lst")
+                    open(f"{self.dir_dataset}/04_splits/{category}/mash/train.lst")
                     .read()
                     .split()
                 )
@@ -37,7 +37,7 @@ class MashDataset(Dataset):
                     self.files.append((category, shape_id))
             else:
                 id_shapes = (
-                    open(f"{self.dir_dataset}/04_splits/{category}/asdf_test.lst")
+                    open(f"{self.dir_dataset}/04_splits/{category}/mash/test.lst")
                     .read()
                     .split()
                 )
@@ -51,9 +51,7 @@ class MashDataset(Dataset):
         category, shape_id = self.files[index]
         # Only consider shapenet dataset: when do training and validation, we use the pcd, qry, occ provided by occ-net or im-net;
         if self.split == "train":
-            mesh = load_mesh(
-                f"{self.dir_dataset}/00_meshes/{category}/{shape_id}.{self.fext_mesh}"
-            )
+            mesh = load_mesh(f"{self.dir_dataset}/00_meshes/{category}/{shape_id}.obj")
             pcd = mesh.sample(self.n_pts_train)
         else:
             pcd = np.load(
