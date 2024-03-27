@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("../ma-sh")
 
-from aro_net.Module.Trainer.mash import Trainer
+from aro_net.Module.trainer import Trainer
 
 
 def demo():

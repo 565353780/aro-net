@@ -55,9 +55,6 @@ class MashNet(nn.Module):
             nn.Conv1d(30, self.hidden_dim // 2, 1),  # FIXME
             nn.BatchNorm1d(self.hidden_dim // 2),
             nn.ReLU(),
-            nn.Conv1d(self.hidden_dim // 2, self.hidden_dim // 2, 1),  # FIXME
-            nn.BatchNorm1d(self.hidden_dim // 2),
-            nn.ReLU(),
             nn.Conv1d(self.hidden_dim // 2, self.hidden_dim, 1),  # FIXME
             nn.BatchNorm1d(self.hidden_dim),
             nn.ReLU(),
@@ -79,10 +76,6 @@ class MashNet(nn.Module):
         self.fc_out = nn.Sequential(
             nn.Conv1d(
                 self.n_anc * self.hidden_dim, self.n_anc * self.hidden_dim // 2, 1
-            ),
-            nn.Tanh(),
-            nn.Conv1d(
-                self.n_anc * self.hidden_dim // 2, self.n_anc * self.hidden_dim // 2, 1
             ),
             nn.Tanh(),
             nn.Conv1d(self.n_anc * self.hidden_dim // 2, 1, 1),

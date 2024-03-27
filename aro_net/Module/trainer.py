@@ -7,12 +7,33 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 
-from aro_net.Config.config import MASH_CONFIG
-from aro_net.Dataset.mash import MashDataset
+from aro_net.Config.config import ARO_CONFIG, MASH_CONFIG
+from aro_net.Dataset.aro import ARONetDataset
+from aro_net.Dataset.single_shape import SingleShapeDataset
 from aro_net.Method.time import getCurrentTime
+from aro_net.Model.aro import ARONet
 from aro_net.Model.mash import MashNet
 
 from aro_net.Module.logger import Logger
+
+mode = "aro"
+
+match mode:
+    case "aro":
+        CONFIG = ARO_CONFIG
+        DATASET = ARONetDataset
+        NET = ARONet
+    case "single":
+        CONFIG = ARO_CONFIG
+        DATASET = SingleShapeDataset
+        NET = ARONet
+    case "mash":
+        from aro_net.Dataset.mash import MashDataset
+        CONFIG = MASH_CONFIG
+        DATASET = MashDataset
+        NET = MashNet
+    case _:
+        exit()
 
 
 def cal_acc(x, gt):
@@ -34,28 +55,28 @@ class Trainer(object):
         self.log_folder_path = "./logs/" + current_time + "/"
 
         self.train_loader = DataLoader(
-            MashDataset("train"),
+            DATASET("train"),
             shuffle=True,
-            batch_size=MASH_CONFIG.n_bs,
-            num_workers=MASH_CONFIG.n_wk,
+            batch_size=CONFIG.n_bs,
+            num_workers=CONFIG.n_wk,
             drop_last=True,
         )
         self.val_loader = DataLoader(
-            MashDataset("val"),
+            DATASET("val"),
             shuffle=False,
-            batch_size=MASH_CONFIG.n_bs,
-            num_workers=MASH_CONFIG.n_wk,
+            batch_size=CONFIG.n_bs,
+            num_workers=CONFIG.n_wk,
             drop_last=True,
         )
 
-        self.model = MashNet().to(MASH_CONFIG.device)
+        self.model = NET().to(CONFIG.device)
 
         self.writer = Logger(self.log_folder_path)
         return
 
     def train_step(self, batch, opt):
         for key in batch:
-            batch[key] = batch[key].to(MASH_CONFIG.device)
+            batch[key] = batch[key].to(CONFIG.device)
         opt.zero_grad()
         x = self.model(batch)
 
@@ -78,7 +99,7 @@ class Trainer(object):
         for batch in tqdm(self.val_loader):
             for key in batch:
                 try:
-                    batch[key] = batch[key].to(MASH_CONFIG.device)
+                    batch[key] = batch[key].to(CONFIG.device)
                 except:
                     pass
             x = self.model(batch)
@@ -98,7 +119,7 @@ class Trainer(object):
     def train(self):
         os.makedirs(self.dir_ckpt, exist_ok=True)
 
-        opt = optim.Adam(self.model.parameters(), lr=MASH_CONFIG.lr)
+        opt = optim.Adam(self.model.parameters(), lr=CONFIG.lr)
 
         fnames_ckpt = glob.glob(os.path.join(self.dir_ckpt, "*"))
         if len(fnames_ckpt) > 0:
@@ -115,7 +136,7 @@ class Trainer(object):
             n_iter = 0
             n_epoch = 0
 
-        for i in range(epoch_latest, MASH_CONFIG.n_epochs):
+        for i in range(epoch_latest, CONFIG.n_epochs):
             self.model.train()
             print("[INFO][Trainer::train]")
             print("\t start train mash occ itr", i + 1, "...")
@@ -154,9 +175,9 @@ class Trainer(object):
                 f"{self.dir_ckpt}/{n_epoch}_{n_iter}.ckpt",
             )
 
-            if n_epoch > 0 and n_epoch % MASH_CONFIG.freq_decay == 0:
+            if n_epoch > 0 and n_epoch % CONFIG.freq_decay == 0:
                 for g in opt.param_groups:
-                    g["lr"] = g["lr"] * MASH_CONFIG.weight_decay
+                    g["lr"] = g["lr"] * CONFIG.weight_decay
 
             n_epoch += 1
 
