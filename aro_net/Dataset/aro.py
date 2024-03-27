@@ -25,9 +25,9 @@ class ARONetDataset(Dataset):
         self.files = []
         if self.name_dataset == "shapenet":
             if self.split in {"train", "val"}:
-                categories = ARO_CONFIG.categories_train.split(",")[:-1]
+                categories = ARO_CONFIG.categories_train
             else:
-                categories = ARO_CONFIG.categories_test.split(",")[:-1]
+                categories = ARO_CONFIG.categories_test
             self.fext_mesh = "obj"
         else:
             categories = [""]
