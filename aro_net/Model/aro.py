@@ -18,7 +18,6 @@ class ARONet(nn.Module):
         tfm_pos_enc=ARO_CONFIG.tfm_pos_enc,
         cond_pn=ARO_CONFIG.cond_pn,
         pn_use_bn=ARO_CONFIG.pn_use_bn,
-        norm_coord=ARO_CONFIG.norm_coord,
     ):
         super().__init__()
         self.n_anc = n_anc
@@ -26,7 +25,6 @@ class ARONet(nn.Module):
         self.n_qry = n_qry
         self.cone_angle_th = cone_angle_th
         self.cond_pn = cond_pn
-        self.norm_coord = norm_coord
         if self.cond_pn:
             self.point_net = ResnetPointnetCondBN(dim=4, reduce=True)
         else:
@@ -122,10 +120,7 @@ class ARONet(nn.Module):
         vec_anc2qry = qry[:, :, None, :] - anc[:, None, :, :]
         mod_anc2qry = torch.linalg.norm(vec_anc2qry, axis=-1)[..., None]
         norm_anc2qry = torch.div(vec_anc2qry, mod_anc2qry.expand(-1, -1, -1, 3))
-        if self.norm_coord:
-            feat_anc2qry = torch.cat([norm_anc2qry, mod_anc2qry], -1)
-        else:
-            feat_anc2qry = torch.cat([vec_anc2qry, mod_anc2qry], -1)
+        feat_anc2qry = torch.cat([norm_anc2qry, mod_anc2qry], -1)
         vec_qry2hit = hit - qry.view(-1, self.n_qry, 1, 1, 3)
         mod_qry2hit = torch.linalg.norm(vec_qry2hit, axis=-1)[..., None]
         mask_padded = (mod_qry2hit.expand(-1, -1, -1, -1, 3) == 0).float()
@@ -133,10 +128,7 @@ class ARONet(nn.Module):
             mod_qry2hit * (1 - mask_padded) + 1.0 * mask_padded
         )  # avoiding divide by 0
         norm_qry2hit = torch.div(vec_qry2hit, mod_qry2hit_)
-        if self.norm_coord:
-            feat_qry2hit = torch.cat([norm_qry2hit, mod_qry2hit], -1)
-        else:
-            feat_qry2hit = torch.cat([vec_qry2hit, mod_qry2hit], -1)
+        feat_qry2hit = torch.cat([norm_qry2hit, mod_qry2hit], -1)
 
         return feat_anc2qry, feat_qry2hit
 

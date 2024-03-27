@@ -53,17 +53,14 @@ python demo.py
 python reconstruct.py --name_exp pretrained_chairs --name_ckpt aronet_chairs_gt_imnet.ckpt --name_dataset shapenet --categories_test 02691156, --n_pts_test 2048 --mc_threshold 0.5
 
 # ShapeNet Airplane (trained w/ OCC-Net data)
-python reconstruct.py --name_exp pretrained_chairs --name_ckpt aronet_chairs_gt_occnet.ckpt --name_dataset shapenet --categories_test 02691156, --norm_coord --n_pts_test 2048 --mc_threshold 0.2
+python reconstruct.py --name_exp pretrained_chairs --name_ckpt aronet_chairs_gt_occnet.ckpt --name_dataset shapenet --categories_test 02691156, --n_pts_test 2048 --mc_threshold 0.2
 ```
 
 ## Train
 
-We use Fibonacci sampling to generate 48 anchors for our ARO-Net. Other anchor settings can generated with `gen_anc.py`.
-
 To train ARO-Net on ABC dataset or ShapeNet:
 ```
-python cal_hit_dist.py
-python train.py --name_exp base_model_chairs --name_dataset shapenet --categories_train 03001627, --norm_coord --gt_source occnet
+python train.py --name_exp base_model_chairs --name_dataset shapenet --categories_train 03001627
 ```
 To train ARO-Net on single shape with data augmentation:
 ```
@@ -77,7 +74,7 @@ Check all training options in `options.py`. You need one NVIDIA A100 (80G) to tr
 To reconstruct meshes on test sets:
 ```
 # ShapeNet Airplane
-python reconstruct.py --name_exp base_model_chairs --name_ckpt 600_301101_xxx_xxx.ckpt --name_dataset shapenet --name_dataset 02691156, --norm_coord
+python reconstruct.py --name_exp base_model_chairs --name_ckpt 600_301101_xxx_xxx.ckpt --name_dataset shapenet --name_dataset 02691156
 ```
 
 To evalute HD, CD, and IoU:

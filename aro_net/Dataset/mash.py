@@ -16,7 +16,6 @@ class MashDataset(Dataset):
         self.n_pts_train = MASH_CONFIG.n_pts_train
         self.n_pts_val = MASH_CONFIG.n_pts_val
         self.n_pts_test = MASH_CONFIG.n_pts_test
-        self.gt_source = MASH_CONFIG.gt_source
         self.files = []
 
         if split == "train":
@@ -59,10 +58,10 @@ class MashDataset(Dataset):
         shape_id = full_shape_id[:-4]
 
         qry = np.load(
-            f"{self.dir_dataset}/02_qry_pts_{self.gt_source}/{category}/{shape_id}.npy"
+            f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id}.npy"
         )
         occ = np.load(
-            f"{self.dir_dataset}/03_qry_occs_{self.gt_source}/{category}/{shape_id}.npy"
+            f"{self.dir_dataset}/03_qry_occs_occnet/{category}/{shape_id}.npy"
         )
 
         mash_params_file_path = (

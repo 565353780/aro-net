@@ -21,7 +21,6 @@ class ARONetDataset(Dataset):
         self.n_pts_train = ARO_CONFIG.n_pts_train
         self.n_pts_val = ARO_CONFIG.n_pts_val
         self.n_pts_test = ARO_CONFIG.n_pts_test
-        self.gt_source = ARO_CONFIG.gt_source
         self.files = []
         if self.name_dataset == "shapenet":
             if self.split in {"train", "val"}:
@@ -82,10 +81,10 @@ class ARONetDataset(Dataset):
 
         if self.name_dataset == "shapenet":
             qry = np.load(
-                f"{self.dir_dataset}/02_qry_pts_{self.gt_source}/{category}/{shape_id}.npy"
+                f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id}.npy"
             )
             occ = np.load(
-                f"{self.dir_dataset}/03_qry_occs_{self.gt_source}/{category}/{shape_id}.npy"
+                f"{self.dir_dataset}/03_qry_occs_occnet/{category}/{shape_id}.npy"
             )
             sdf = occ
         else:

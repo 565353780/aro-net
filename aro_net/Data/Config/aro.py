@@ -8,7 +8,6 @@ class Config(object):
         self.categories_train = ["03001627"]
         self.categories_test = ["02691156", "03001627"]
         self.add_noise = 0
-        self.gt_source = "occnet"
         # ARO-Net hyper-parameters
         self.n_pts_train = 2048
         self.n_pts_val = 1024
@@ -20,7 +19,6 @@ class Config(object):
         self.pn_use_bn = False
         self.cond_pn = False
         self.tfm_pos_enc = False
-        self.norm_coord = False
         # common hyper-parameters
         self.device = "cuda"
         self.mode = "test"

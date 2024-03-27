@@ -23,7 +23,6 @@ def demo():
         tfm_pos_enc=args.tfm_pos_enc,
         cond_pn=args.cond_pn,
         pn_use_bn=args.pn_use_bn,
-        norm_coord=args.norm_coord,
     )
     path_ckpt = os.path.join("experiments", args.name_exp, "ckpt", args.name_ckpt)
     model.load_state_dict(torch.load(path_ckpt)["model"])
