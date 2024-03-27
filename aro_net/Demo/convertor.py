@@ -12,6 +12,9 @@ def demo():
     save_split_folder_path = (
         "/home/chli/Dataset/aro_net/data/shapenet/04_splits/02691156/mash/"
     )
+    query_point_root_folder_path = (
+        "/home/chli/Dataset/aro_net/data/shapenet/02_qry_pts_occnet/02691156/"
+    )
     save_feature_folder_path = (
         "/home/chli/Dataset/aro_net/data/shapenet/anchor_feature/100anc/02691156/"
     )
@@ -20,5 +23,9 @@ def demo():
 
     convertor = Convertor(dataset_root_folder_path)
     convertor.convertToSplitFiles(save_split_folder_path, train_scale, val_scale)
-    convertor.convertToAnchorFeatures(save_feature_folder_path)
+
+    if False:
+        convertor.convertToAnchorFeatures(
+            query_point_root_folder_path, save_feature_folder_path
+        )
     return True

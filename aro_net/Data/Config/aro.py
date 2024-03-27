@@ -11,8 +11,8 @@ class Config(object):
         self.gt_source = "occnet"
         # ARO-Net hyper-parameters
         self.n_pts_train = 2048
-        self.n_pts_test = 1024
         self.n_pts_val = 1024
+        self.n_pts_test = 1024
         self.cone_angle_th = 15.0
         self.n_local = 16
         self.n_anc = 48

@@ -1,31 +1,30 @@
-import sys
-
-sys.path.append("../ma-sh")
-
 import os
 import torch
 import numpy as np
 from torch.utils.data import Dataset
 
-
-from ma_sh.Model.mash import Mash
-
+from aro_net.Config.config import MASH_CONFIG
 from aro_net.Method.mesh import load_mesh
+from aro_net.Method.feature import toMashFileAnchorFeature
 
 
 class MashDataset(Dataset):
-    def __init__(self, split, args) -> None:
+    def __init__(self, split) -> None:
         self.split = split
-        self.n_anc = 40  # FIXME:
-        self.n_qry = args.n_qry
-        self.dir_dataset = os.path.join(args.dir_data, args.name_dataset)
-        self.n_pts_train = args.n_pts_train
-        self.n_pts_val = args.n_pts_val
-        self.n_pts_test = args.n_pts_test
-        self.gt_source = args.gt_source
+        self.n_qry = MASH_CONFIG.n_qry
+        self.dir_dataset = os.path.join(MASH_CONFIG.dir_data, MASH_CONFIG.name_dataset)
+        self.n_pts_train = MASH_CONFIG.n_pts_train
+        self.n_pts_val = MASH_CONFIG.n_pts_val
+        self.n_pts_test = MASH_CONFIG.n_pts_test
+        self.gt_source = MASH_CONFIG.gt_source
         self.files = []
 
-        categories = ["02691156"]  # FIXME
+        if split == "train":
+            categories = MASH_CONFIG.categories_train
+        else:
+            # FIXME: only finish single class split here
+            categories = MASH_CONFIG.categories_train
+
         for category in categories:
             if self.split == "train":
                 id_shapes = (
@@ -33,22 +32,32 @@ class MashDataset(Dataset):
                     .read()
                     .split()
                 )
-                for shape_id in id_shapes:
-                    self.files.append((category, shape_id))
             else:
                 id_shapes = (
                     open(f"{self.dir_dataset}/04_splits/{category}/mash/test.lst")
                     .read()
                     .split()
                 )
-                for shape_id in id_shapes:
-                    self.files.append((category, shape_id))
+
+            for shape_id in id_shapes:
+                qry_file_path = f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id[:-4]}.npy"
+                occ_file_path = f"{self.dir_dataset}/03_qry_occs_occnet/{category}/{shape_id[:-4]}.npy"
+
+                if not os.path.exists(qry_file_path):
+                    continue
+                if not os.path.exists(occ_file_path):
+                    continue
+
+                self.files.append((category, shape_id))
+        return
 
     def __len__(self):
         return len(self.files)
 
     def __getitem__(self, index):
-        category, shape_id = self.files[index]
+        category, full_shape_id = self.files[index]
+        shape_id = full_shape_id[:-4]
+
         # Only consider shapenet dataset: when do training and validation, we use the pcd, qry, occ provided by occ-net or im-net;
         if self.split == "train":
             mesh = load_mesh(f"{self.dir_dataset}/00_meshes/{category}/{shape_id}.obj")
@@ -64,19 +73,19 @@ class MashDataset(Dataset):
         occ = np.load(
             f"{self.dir_dataset}/03_qry_occs_{self.gt_source}/{category}/{shape_id}.npy"
         )
-        ftrs = np.load(
-            f"{self.dir_dataset}/06_asdf_params_right/{category}/{shape_id}.npy"
-        )
-        anc_param_path = f"{self.dir_dataset}/05_asdf_anchor/{category}/{shape_id}.npy"
-        anc_params = np.load(anc_param_path, allow_pickle=True).item()
-        params = anc_params["best_params"]
-        n_ftrs = ftrs.shape[0]
-        # print(ftrs.shape)
-        params = np.tile(params[np.newaxis, :, :], reps=(n_ftrs, 1, 1))
-        # print(params.shape)
-        ftrs = np.concatenate((params, ftrs), axis=-1)
 
-        sdf = occ
+        mash_params_file_path = (
+            f"{self.dir_dataset}/mash/100anc/mash/{category}/{full_shape_id}.npy"
+        )
+
+        mash_params = np.load(mash_params_file_path, allow_pickle=True).item()
+
+        mask_params = mash_params["mask_params"]
+        sh_params = mash_params["sh_params"]
+        rotate_vectors = mash_params["rotate_vectors"]
+        positions = mash_params["positions"]
+
+        params = np.hstack([rotate_vectors, positions, mask_params, sh_params])
 
         if self.split == "train":
             np.random.seed()
@@ -84,28 +93,25 @@ class MashDataset(Dataset):
             perm = np.array(list(range(self.n_qry)))
             qry = qry[perm]
             occ = occ[perm]
-            sdf = sdf[perm]
-            # ftrs = self.get_anchor_feature(qry, anc_param_path)
-            ftrs = ftrs[perm]
-            # params = parmas[perm, :]
         else:
             np.random.seed(1234)
             perm = np.random.permutation(len(qry))[: self.n_qry]
             qry = qry[perm]
             occ = occ[perm]
-            sdf = sdf[perm]
-            ftrs = ftrs[perm]
-            # params = parmas[perm, :]
+
+        ftrs = toMashFileAnchorFeature(mash_params_file_path, qry, "cpu").numpy()
+
+        n_ftrs = ftrs.shape[0]
+        params = np.tile(params[np.newaxis, :, :], reps=(n_ftrs, 1, 1))
+        ftrs = np.concatenate((params, ftrs), axis=-1)
 
         feed_dict = {
-            # 'pcd': torch.tensor(pcd).float(),
+            "pcd": torch.tensor(pcd).float(),
             "qry": torch.tensor(qry).float(),
             "ftrs": torch.tensor(ftrs).float(),
-            # 'anc': torch.tensor(self.anc).float(),
             "occ": torch.tensor(occ).float(),
-            # 'shape_id': shape_id,
-            # 'params':torch.tensor(params).float(),
         }
+
         if self.split != "train":
             feed_dict["shape_id"] = shape_id
 

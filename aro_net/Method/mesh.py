@@ -3,19 +3,19 @@ import numpy as np
 import open3d as o3d
 
 
-
 def load_mesh(file_in):
     mesh = trimesh.load(
         file_in, force="mesh", skip_materials=True, maintain_order=True, process=False
     )
     return mesh
-def create_mesh_o3d(v,f):
+
+
+def create_mesh_o3d(v, f):
     mesh_o3d = o3d.geometry.TriangleMesh(
-        o3d.utility.Vector3dVector(v),
-        o3d.utility.Vector3iVector(f))
+        o3d.utility.Vector3dVector(v), o3d.utility.Vector3iVector(f)
+    )
     mesh_o3d.compute_vertex_normals()
     return mesh_o3d
-
 
 
 def normalize_mesh(file_in, file_out):

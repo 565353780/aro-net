@@ -38,14 +38,14 @@ class Trainer(object):
         self.log_folder_path = "./logs/" + current_time + "/"
 
         self.train_loader = DataLoader(
-            ARONetDataset(split="train"),
+            ARONetDataset("train"),
             shuffle=True,
             batch_size=ARO_CONFIG.n_bs,
             num_workers=ARO_CONFIG.n_wk,
             drop_last=True,
         )
         self.val_loader = DataLoader(
-            ARONetDataset(split="val"),
+            ARONetDataset("val"),
             shuffle=False,
             batch_size=ARO_CONFIG.n_bs,
             num_workers=ARO_CONFIG.n_wk,

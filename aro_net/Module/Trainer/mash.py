@@ -8,6 +8,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 
+from aro_net.Config.config import MASH_CONFIG
 from aro_net.Dataset.mash import MashDataset
 from aro_net.Method.time import getCurrentTime
 from aro_net.Model.mash import MashNet
@@ -15,70 +16,42 @@ from aro_net.Model.mash import MashNet
 from aro_net.Module.logger import Logger
 
 
-def cal_acc(x, gt, pred_type):
-    if pred_type == "occ":
-        acc = ((x["occ_pred"].sigmoid() > 0.5) == (gt["occ"] > 0.5)).float().sum(
-            dim=-1
-        ) / x["occ_pred"].shape[1]
-    else:
-        acc = ((x["sdf_pred"] >= 0) == (gt["sdf"] >= 0)).float().sum(dim=-1) / x[
-            "sdf_pred"
-        ].shape[1]
+def cal_acc(x, gt):
+    acc = ((x.sigmoid() > 0.5) == (gt["occ"] > 0.5)).float().sum(dim=-1) / x.shape[1]
     acc = acc.mean(-1)
     return acc
 
 
-def cal_loss_pred(x, gt, pred_type):
-    if pred_type == "occ":
-        loss_pred = F.binary_cross_entropy_with_logits(x["occ_pred"], gt["occ"])
-    else:
-        loss_pred = F.l1_loss(x["sdf_pred"], gt["sdf"])
-
-    # print(f"pred: {len(x['occ_pred']<=0)}/{len(x['occ_pred'])}")
-
+def cal_loss_pred(x, gt):
+    loss_pred = F.binary_cross_entropy_with_logits(x, gt["occ"])
     return loss_pred
 
 
 class Trainer(object):
-    def __init__(self, args) -> None:
-        self.args = args
-
-        self.device = "cpu"
-
+    def __init__(self) -> None:
         current_time = getCurrentTime()
 
         self.dir_ckpt = "./output/" + current_time + "/"
         self.log_folder_path = "./logs/" + current_time + "/"
 
         self.train_loader = DataLoader(
-            MashDataset(split="train", args=self.args),
+            MashDataset("train"),
             shuffle=True,
-            batch_size=self.args.n_bs,
-            num_workers=self.args.n_wk,
+            batch_size=MASH_CONFIG.n_bs,
+            num_workers=MASH_CONFIG.n_wk,
             drop_last=True,
         )
         self.val_loader = DataLoader(
-            MashDataset(split="val", args=self.args),
+            MashDataset("val"),
             shuffle=False,
-            batch_size=self.args.n_bs,
-            num_workers=self.args.n_wk,
+            batch_size=MASH_CONFIG.n_bs,
+            num_workers=MASH_CONFIG.n_wk,
             drop_last=True,
         )
 
-        n_anc = 40  # FIXME: Remark! suppose we use 40 anchors!
-        self.model = MashNet(
-            n_anc=n_anc,
-            n_qry=args.n_qry,
-            n_local=args.n_local,
-            cone_angle_th=args.cone_angle_th,
-            tfm_pos_enc=args.tfm_pos_enc,
-            cond_pn=args.cond_pn,
-            pn_use_bn=args.pn_use_bn,
-            pred_type=args.pred_type,
-            norm_coord=args.norm_coord,
-        ).to(self.device)
+        self.model = MashNet().to(MASH_CONFIG.device)
 
-        if self.args.multi_gpu:
+        if MASH_CONFIG.multi_gpu:
             self.model = torch.nn.DataParallel(self.model)
 
         self.writer = Logger(self.log_folder_path)
@@ -86,16 +59,16 @@ class Trainer(object):
 
     def train_step(self, batch, opt):
         for key in batch:
-            batch[key] = batch[key].to(self.device)
+            batch[key] = batch[key].to(MASH_CONFIG.device)
         opt.zero_grad()
         x = self.model(batch)
 
-        loss = cal_loss_pred(x, batch, self.args.pred_type)
+        loss = cal_loss_pred(x, batch)
 
         loss.backward()
         opt.step()
         with torch.no_grad():
-            acc = cal_acc(x, batch, self.args.pred_type)
+            acc = cal_acc(x, batch)
         return loss.item(), acc.item()
 
     @torch.no_grad()
@@ -105,12 +78,12 @@ class Trainer(object):
         ni = 0
         for batch in self.val_loader:
             for key in batch:
-                batch[key] = batch[key].to(self.device)
+                batch[key] = batch[key].to(MASH_CONFIG.device)
             x = self.model(batch)
 
-            loss_pred = cal_loss_pred(x, batch, self.args.pred_type)
+            loss_pred = cal_loss_pred(x, batch)
 
-            acc = cal_acc(x, batch, self.args.red_type)
+            acc = cal_acc(x, batch)
 
             avg_loss_pred = avg_loss_pred + loss_pred.item()
             avg_acc = avg_acc + acc.item()
@@ -119,13 +92,13 @@ class Trainer(object):
         avg_acc /= ni
         return avg_loss_pred, avg_acc
 
-    def train(self, args):
+    def train(self):
         os.makedirs(self.dir_ckpt, exist_ok=True)
 
-        opt = optim.Adam(self.model.parameters(), lr=args.lr)
+        opt = optim.Adam(self.model.parameters(), lr=MASH_CONFIG.lr)
 
-        if args.resume:
-            fnames_ckpt = glob.glob(os.path.join(self.dir_ckpt, "*"))
+        fnames_ckpt = glob.glob(os.path.join(self.dir_ckpt, "*"))
+        if len(fnames_ckpt) > 0:
             fname_ckpt_latest = max(fnames_ckpt, key=os.path.getctime)
             # path_ckpt = os.path.join(dir_ckpt, fname_ckpt_latest)
             ckpt = torch.load(fname_ckpt_latest)
@@ -139,12 +112,12 @@ class Trainer(object):
             n_iter = 0
             n_epoch = 0
 
-        for i in range(epoch_latest, args.n_epochs):
+        for i in range(epoch_latest, MASH_CONFIG.n_epochs):
             start_time = time.process_time()
             self.model.train()
             for batch in tqdm(self.train_loader):
                 loss, acc = self.train_step(batch, opt)
-                if n_iter % args.freq_log == 0:
+                if n_iter % MASH_CONFIG.freq_log == 0:
                     print(
                         "[train] epcho:",
                         n_epoch,
@@ -165,12 +138,12 @@ class Trainer(object):
             execution_time = end_time - start_time
             print(f"epoch {i} finished, costing {execution_time/60.0} minutes")
 
-            if n_epoch % args.freq_ckpt == 0:
-                # model.eval() # avg_loss_pred, avg_acc = val_step(model, val_loader, args.pred_type)
+            if n_epoch % MASH_CONFIG.freq_ckpt == 0:
+                # model.eval() # avg_loss_pred, avg_acc = val_step(model, val_loader, MASH_CONFIG.pred_type)
                 # writer.addScalar('Loss/val', avg_loss_pred, n_iter)
                 # writer.addScalar('Acc/val', avg_acc, n_iter)
                 # print('[val] epcho:', n_epoch,' ,iter:',n_iter," avg_loss_pred:",avg_loss_pred, " acc:",avg_acc)
-                if args.multi_gpu:
+                if MASH_CONFIG.multi_gpu:
                     torch.save(
                         {
                             "model": self.model.module.state_dict(),
@@ -191,9 +164,9 @@ class Trainer(object):
                         },
                         f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{start_time}.ckpt",
                     )  # {avg_loss_pred:.4}_{avg_acc:.4}.ckpt')
-            if n_epoch > 0 and n_epoch % args.freq_decay == 0:
+            if n_epoch > 0 and n_epoch % MASH_CONFIG.freq_decay == 0:
                 for g in opt.param_groups:
-                    g["lr"] = g["lr"] * args.weight_decay
+                    g["lr"] = g["lr"] * MASH_CONFIG.weight_decay
 
             n_epoch += 1
 

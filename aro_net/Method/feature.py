@@ -66,7 +66,7 @@ def toMashAnchorFeature(mash: Mash, query_points: torch.Tensor) -> torch.Tensor:
 def toMashFileAnchorFeature(
     mash_params_file_path: str,
     query_points: Union[torch.Tensor, np.ndarray],
-    device: str = "cuda:0",
+    device: str = "cpu",
 ) -> torch.Tensor:
     if isinstance(query_points, np.ndarray):
         query_points = torch.from_numpy(query_points).to(device)

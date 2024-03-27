@@ -26,7 +26,7 @@ class Convertor(object):
 
         filename_list = os.listdir(self.dataset_root_folder_path)
 
-        file_basename_list = [filename[:-8] for filename in filename_list]
+        file_basename_list = [filename[:-4] for filename in filename_list]
 
         permut_file_basename_list = np.random.permutation(file_basename_list)
 
