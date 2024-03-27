@@ -58,15 +58,6 @@ class MashDataset(Dataset):
         category, full_shape_id = self.files[index]
         shape_id = full_shape_id[:-4]
 
-        # Only consider shapenet dataset: when do training and validation, we use the pcd, qry, occ provided by occ-net or im-net;
-        if self.split == "train":
-            mesh = load_mesh(f"{self.dir_dataset}/00_meshes/{category}/{shape_id}.obj")
-            pcd = mesh.sample(self.n_pts_train)
-        else:
-            pcd = np.load(
-                f"{self.dir_dataset}/01_pcds/{category}/{str(self.n_pts_test)}/{shape_id}.npy"
-            )
-
         qry = np.load(
             f"{self.dir_dataset}/02_qry_pts_{self.gt_source}/{category}/{shape_id}.npy"
         )
@@ -106,7 +97,6 @@ class MashDataset(Dataset):
         ftrs = np.concatenate((params, ftrs), axis=-1)
 
         feed_dict = {
-            "pcd": torch.tensor(pcd).float(),
             "qry": torch.tensor(qry).float(),
             "ftrs": torch.tensor(ftrs).float(),
             "occ": torch.tensor(occ).float(),

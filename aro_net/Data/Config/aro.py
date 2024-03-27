@@ -28,7 +28,6 @@ class Config(object):
         self.n_epochs = 600
         self.lr = 1e-5
         self.n_dim = 128
-        self.multi_gpu = False
         self.freq_ckpt = 10
         self.freq_log = 200
         self.freq_decay = 100

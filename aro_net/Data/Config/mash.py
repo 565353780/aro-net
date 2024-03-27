@@ -31,7 +31,6 @@ class Config(object):
         self.n_epochs = 600
         self.lr = 1e-5
         self.n_dim = 128
-        self.multi_gpu = False
         self.freq_decay = 100
         self.weight_decay = 0.5
         # Marching Cube realted

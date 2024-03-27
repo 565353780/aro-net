@@ -50,9 +50,6 @@ class Trainer(object):
 
         self.model = MashNet().to(MASH_CONFIG.device)
 
-        if MASH_CONFIG.multi_gpu:
-            self.model = torch.nn.DataParallel(self.model)
-
         self.writer = Logger(self.log_folder_path)
         return
 
@@ -75,9 +72,15 @@ class Trainer(object):
         avg_loss_pred = 0
         avg_acc = 0
         ni = 0
-        for batch in self.val_loader:
+
+        print("[INFO][Trainer::val_step]")
+        print("\t start val loss and acc...")
+        for batch in tqdm(self.val_loader):
             for key in batch:
-                batch[key] = batch[key].to(MASH_CONFIG.device)
+                try:
+                    batch[key] = batch[key].to(MASH_CONFIG.device)
+                except:
+                    pass
             x = self.model(batch)
 
             loss_pred = cal_loss_pred(x, batch)
@@ -87,6 +90,7 @@ class Trainer(object):
             avg_loss_pred = avg_loss_pred + loss_pred.item()
             avg_acc = avg_acc + acc.item()
             ni += 1
+
         avg_loss_pred /= ni
         avg_acc /= ni
         return avg_loss_pred, avg_acc
@@ -142,7 +146,7 @@ class Trainer(object):
 
             torch.save(
                 {
-                    "model": self.model.module.state_dict(),
+                    "model": self.model.state_dict(),
                     "opt": opt.state_dict(),
                     "n_epoch": n_epoch,
                     "n_iter": n_iter,

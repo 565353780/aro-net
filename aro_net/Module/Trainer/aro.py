@@ -54,9 +54,6 @@ class Trainer(object):
 
         self.model = ARONet().to(ARO_CONFIG.device)
 
-        if ARO_CONFIG.multi_gpu:
-            self.model = torch.nn.DataParallel(self.model)
-
         self.writer = Logger(self.log_folder_path)
         return
 
@@ -149,26 +146,17 @@ class Trainer(object):
                     " acc:",
                     avg_acc,
                 )
-                if ARO_CONFIG.multi_gpu:
-                    torch.save(
-                        {
-                            "model": self.model.module.state_dict(),
-                            "opt": opt.state_dict(),
-                            "n_epoch": n_epoch,
-                            "n_iter": n_iter,
-                        },
-                        f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
-                    )
-                else:
-                    torch.save(
-                        {
-                            "model": self.model.state_dict(),
-                            "opt": opt.state_dict(),
-                            "n_epoch": n_epoch,
-                            "n_iter": n_iter,
-                        },
-                        f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
-                    )
+
+                torch.save(
+                    {
+                        "model": self.model.module.state_dict(),
+                        "opt": opt.state_dict(),
+                        "n_epoch": n_epoch,
+                        "n_iter": n_iter,
+                    },
+                    f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{avg_loss_pred:.4}_{avg_acc:.4}.ckpt",
+                )
+
             if n_epoch > 0 and n_epoch % ARO_CONFIG.freq_decay == 0:
                 for g in opt.param_groups:
                     g["lr"] = g["lr"] * ARO_CONFIG.weight_decay
