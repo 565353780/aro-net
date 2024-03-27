@@ -6,9 +6,7 @@ from typing import Union
 from ma_sh.Model.mash import Mash
 
 
-def getMashAnchorFeature(
-    mash_params_file_path: str, query_points: Union[torch.Tensor, np.ndarray]
-) -> torch.Tensor:
+def toMashAnchorFeature(mash: Mash, query_points: torch.Tensor) -> torch.Tensor:
     """receive a qry numpy array, output the anchor feature from each anchor
 
     Returns:
@@ -18,25 +16,6 @@ def getMashAnchorFeature(
        1/0 is whether the query point is within the  anchor's mask;
        d is the distance on the SH sphere, which is the distance between the anchor and the surface along the line of the query point and the anchor, d=0 if the query point is not within the mask.
     """
-    mask_boundary_sample_num = 36
-    sample_polar_num = 2000
-    sample_point_scale = 0.8
-    idx_dtype = torch.int64
-    dtype = torch.float64
-    device = "cpu"
-
-    if isinstance(query_points, np.ndarray):
-        query_points = torch.from_numpy(query_points)
-
-    mash = Mash.fromParamsFile(
-        mash_params_file_path,
-        mask_boundary_sample_num,
-        sample_polar_num,
-        sample_point_scale,
-        idx_dtype,
-        dtype,
-        device,
-    )
 
     ftrs = []
     for i in range(mash.anchor_num):
@@ -82,3 +61,30 @@ def getMashAnchorFeature(
     ftrs = ftrs.permute(1, 0, 2)
 
     return ftrs
+
+
+def toMashFileAnchorFeature(
+    mash_params_file_path: str,
+    query_points: Union[torch.Tensor, np.ndarray],
+    device: str = "cuda:0",
+) -> torch.Tensor:
+    if isinstance(query_points, np.ndarray):
+        query_points = torch.from_numpy(query_points).to(device)
+
+    mask_boundary_sample_num = 0
+    sample_polar_num = 0
+    sample_point_scale = 0.0
+    idx_dtype = torch.int64
+    dtype = query_points.dtype
+
+    mash = Mash.fromParamsFile(
+        mash_params_file_path,
+        mask_boundary_sample_num,
+        sample_polar_num,
+        sample_point_scale,
+        idx_dtype,
+        dtype,
+        device,
+    )
+
+    return toMashAnchorFeature(mash, query_points)

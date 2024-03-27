@@ -1,10 +1,11 @@
 import os
 import numpy as np
+from tqdm import tqdm
 from math import ceil
 from typing import Tuple
 
 from aro_net.Method.sample import sampleQueryPoints
-from aro_net.Method.feature import getMashAnchorFeature
+from aro_net.Method.feature import toMashFileAnchorFeature
 
 
 class Convertor(object):
@@ -72,25 +73,49 @@ class Convertor(object):
                 f.write(test_name + "\n")
         return True
 
-    def convertToAnchorFeatures(self, save_feature_folder_path: str) -> bool:
+    def convertToAnchorFeatures(
+        self, query_point_root_folder_path: str, save_feature_folder_path: str
+    ) -> bool:
         if not os.path.exists(self.dataset_root_folder_path):
             print("[ERROR][Convertor::convertToSplits]")
             print("\t dataset root folder not exist!")
             print("\t dataset_root_folder_path:", self.dataset_root_folder_path)
             return False
 
+        if not os.path.exists(query_point_root_folder_path):
+            print("[ERROR][Convertor::convertToSplits]")
+            print("\t query point root folder not exist!")
+            print("\t query_point_root_folder_path:", query_point_root_folder_path)
+            return False
+
         os.makedirs(save_feature_folder_path, exist_ok=True)
 
         filename_list = os.listdir(self.dataset_root_folder_path)
 
-        for filename in filename_list:
+        for filename in tqdm(filename_list):
+            save_feature_file_path = save_feature_folder_path + filename
+
+            if os.path.exists(save_feature_file_path):
+                continue
+
             file_path = self.dataset_root_folder_path + filename
 
-            points = np.random.randn(1000, 3)
-            query_points = sampleQueryPoints(points, 512)
+            shape_file_name = filename.replace("_obj", "").replace("_ply", "")
 
-            anchor_feature = getMashAnchorFeature(file_path, query_points)
-            print(anchor_feature.shape)
-            exit()
+            query_point_file_path = query_point_root_folder_path + shape_file_name
+
+            if not os.path.exists(query_point_file_path):
+                print("[WARN][Convertor::convertToAnchorFeatures]")
+                print("\t query point file not exist!")
+                print("\t query_point_file_path:", query_point_file_path)
+                continue
+
+            query_points = np.load(query_point_file_path)
+
+            anchor_feature = (
+                toMashFileAnchorFeature(file_path, query_points).cpu().numpy()
+            )
+
+            np.save(save_feature_file_path, anchor_feature)
 
         return True
