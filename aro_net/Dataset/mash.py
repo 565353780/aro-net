@@ -4,7 +4,6 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from aro_net.Config.config import MASH_CONFIG
-from aro_net.Method.mesh import load_mesh
 from aro_net.Method.feature import toMashFileAnchorFeature
 
 
@@ -57,9 +56,7 @@ class MashDataset(Dataset):
         category, full_shape_id = self.files[index]
         shape_id = full_shape_id[:-4]
 
-        qry = np.load(
-            f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id}.npy"
-        )
+        qry = np.load(f"{self.dir_dataset}/02_qry_pts_occnet/{category}/{shape_id}.npy")
         occ = np.load(
             f"{self.dir_dataset}/03_qry_occs_occnet/{category}/{shape_id}.npy"
         )

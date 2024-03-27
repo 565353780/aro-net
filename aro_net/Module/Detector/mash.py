@@ -30,12 +30,6 @@ class Detector(object):
 
         state_dict = torch.load(model_file_path)["model"]
 
-        # FIXME: an extra unused layer values occured
-        remove_key_list = ["fc_dist_hit.0.weight", "fc_dist_hit.0.bias"]
-        for remove_key in remove_key_list:
-            if remove_key in state_dict.keys():
-                del state_dict[remove_key]
-
         self.model.load_state_dict(state_dict)
         self.model.to(MASH_CONFIG.device)
         self.model.eval()
