@@ -20,7 +20,6 @@ class Config(object):
         self.pn_use_bn = False
         self.cond_pn = False
         self.tfm_pos_enc = False
-        self.pred_type = "occ"
         self.norm_coord = False
         # common hyper-parameters
         self.device = "cuda"
@@ -41,6 +40,5 @@ class Config(object):
         self.mc_threshold = 0.5
 
         assert self.name_dataset in ["abc", "shapenet", "single", "custom"]
-        assert self.pred_type in ["occ", "sdf"]
         assert self.mode in ["train", "test"]
         return

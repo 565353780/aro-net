@@ -18,7 +18,6 @@ class ARONet(nn.Module):
         tfm_pos_enc=ARO_CONFIG.tfm_pos_enc,
         cond_pn=ARO_CONFIG.cond_pn,
         pn_use_bn=ARO_CONFIG.pn_use_bn,
-        pred_type=ARO_CONFIG.pred_type,
         norm_coord=ARO_CONFIG.norm_coord,
     ):
         super().__init__()
@@ -27,7 +26,6 @@ class ARONet(nn.Module):
         self.n_qry = n_qry
         self.cone_angle_th = cone_angle_th
         self.cond_pn = cond_pn
-        self.pred_type = pred_type
         self.norm_coord = norm_coord
         if self.cond_pn:
             self.point_net = ResnetPointnetCondBN(dim=4, reduce=True)
@@ -55,10 +53,7 @@ class ARONet(nn.Module):
             d_model=128, nhead=8, batch_first=True
         )
         self.att_decoder = nn.TransformerEncoder(self.att_layer, num_layers=6)
-        if self.pred_type == "occ":
-            self.fc_out = nn.Conv1d(self.n_anc * 128, 1, 1)
-        else:
-            self.fc_out = nn.Sequential(nn.Conv1d(128, 1, 1), nn.Tanh())
+        self.fc_out = nn.Conv1d(self.n_anc * 128, 1, 1)
 
     def cast_cone(self, pcd, anc, qry):
         """
@@ -195,13 +190,6 @@ class ARONet(nn.Module):
         # output the predicted occupancy
         x1 = x.view(n_bs, self.n_qry, self.n_anc, -1)
         x2 = x1.view(n_bs, self.n_qry, self.n_anc * 128).permute(0, 2, 1)
-        pred = self.fc_out(x2).view(n_bs, self.n_qry)
+        occ = self.fc_out(x2).view(n_bs, self.n_qry)
 
-        ret_dict = {}
-
-        if self.pred_type == "occ":
-            ret_dict["occ_pred"] = pred
-        else:
-            ret_dict["sdf_pred"] = pred
-
-        return ret_dict
+        return occ

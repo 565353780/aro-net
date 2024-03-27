@@ -48,7 +48,6 @@ class Generator3D(object):
         resolution0=ARO_CONFIG.mc_res0,
         upsampling_steps=ARO_CONFIG.mc_up_steps,
         chunk_size=ARO_CONFIG.mc_chunk_size,
-        pred_type=ARO_CONFIG.pred_type,
         input_type=None,
         vol_info=None,
         vol_bound=None,
@@ -67,7 +66,6 @@ class Generator3D(object):
         self.sample = sample
         self.simplify_nfaces = simplify_nfaces
         self.chunk_size = chunk_size
-        self.pred_type = pred_type
         # for pointcloud_crop
         self.vol_bound = vol_bound
         if vol_info is not None:
@@ -93,11 +91,8 @@ class Generator3D(object):
                 else:
                     data_chunk[key] = data[key]
 
-            ret_dict = self.model(data_chunk)
-            if self.pred_type == "occ":
-                ret.append(ret_dict["occ_pred"])
-            else:
-                ret.append(ret_dict["sdf_pred"])
+            occ = self.model(data_chunk)
+            ret.append(occ)
 
         ret = torch.cat(ret, -1)
         ret = ret.squeeze(0)

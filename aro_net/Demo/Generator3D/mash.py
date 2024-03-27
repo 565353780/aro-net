@@ -23,7 +23,6 @@ def demo():
         tfm_pos_enc=args.tfm_pos_enc,
         cond_pn=args.cond_pn,
         pn_use_bn=args.pn_use_bn,
-        pred_type=args.pred_type,
         norm_coord=args.norm_coord,
     )
     path_ckpt = os.path.join("experiments", args.name_exp, "ckpt", args.name_ckpt)
@@ -41,7 +40,6 @@ def demo():
         resolution0=args.mc_res0,
         upsampling_steps=args.mc_up_steps,
         chunk_size=args.mc_chunk_size,
-        pred_type=args.pred_type,
     )
     # dataset = ARONetDataset(split='test', args=args)
     dataset = MashDataset(split="asdf_test", args=args)  # FIXME

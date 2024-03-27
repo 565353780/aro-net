@@ -53,7 +53,6 @@ class Generator3D(object):
         vol_info=None,
         vol_bound=None,
         simplify_nfaces=None,
-        pred_type="occ",
     ):
         # self.model = model.to(device)
         self.model = model
@@ -70,7 +69,6 @@ class Generator3D(object):
         self.simplify_nfaces = simplify_nfaces
         self.chunk_size = chunk_size
         # self.chunk_size = 512 # FIXME
-        self.pred_type = pred_type
         # for pointcloud_crop
         self.vol_bound = vol_bound
         if vol_info is not None:
@@ -126,11 +124,8 @@ class Generator3D(object):
                 else:
                     data_chunk[key] = data[key]
 
-            ret_dict = self.model(data_chunk)
-            if self.pred_type == "occ":
-                ret.append(ret_dict["occ_pred"])
-            else:
-                ret.append(ret_dict["sdf_pred"])
+            occ = self.model(data_chunk)
+            ret.append(occ)
 
         ret = torch.cat(ret, -1)
         ret = ret.squeeze(0)

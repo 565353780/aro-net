@@ -1,10 +1,13 @@
+import os
+
+
 class Config(object):
     def __init__(self) -> None:
         # dataset related
         self.dir_data = "./data"
         self.name_dataset = "shapenet"
         self.name_single = "fertility"
-        self.n_wk = 4
+        self.n_wk = os.cpu_count()
         self.categories_train = ["02691156"]
         self.categories_test = ["02691156", "03001627"]
         self.add_noise = 0
@@ -20,7 +23,6 @@ class Config(object):
         self.pn_use_bn = False
         self.cond_pn = False
         self.tfm_pos_enc = False
-        self.pred_type = "occ"
         self.norm_coord = False
         # common hyper-parameters
         self.device = "cuda"
@@ -30,8 +32,6 @@ class Config(object):
         self.lr = 1e-5
         self.n_dim = 128
         self.multi_gpu = False
-        self.freq_ckpt = 10
-        self.freq_log = 200
         self.freq_decay = 100
         self.weight_decay = 0.5
         # Marching Cube realted
@@ -41,6 +41,5 @@ class Config(object):
         self.mc_threshold = 0.5
 
         assert self.name_dataset in ["abc", "shapenet", "single", "custom"]
-        assert self.pred_type in ["occ", "sdf"]
         assert self.mode in ["train", "test"]
         return

@@ -1,5 +1,4 @@
 import os
-import time
 import glob
 import torch
 import torch.optim as optim
@@ -113,57 +112,44 @@ class Trainer(object):
             n_epoch = 0
 
         for i in range(epoch_latest, MASH_CONFIG.n_epochs):
-            start_time = time.process_time()
             self.model.train()
+            print("[INFO][Trainer::train]")
+            print("\t start train mash occ itr", i + 1, "...")
             for batch in tqdm(self.train_loader):
                 loss, acc = self.train_step(batch, opt)
-                if n_iter % MASH_CONFIG.freq_log == 0:
-                    print(
-                        "[train] epcho:",
-                        n_epoch,
-                        " ,iter:",
-                        n_iter,
-                        " loss:",
-                        loss,
-                        " acc:",
-                        acc,
-                    )
-                    self.writer.addScalar("Loss/train", loss, n_iter)
-                    self.writer.addScalar("Acc/train", acc, n_iter)
-                    lr = opt.state_dict()["param_groups"][0]["lr"]
-                    self.writer.addScalar("Acc/lr", lr, n_iter)
+                lr = opt.state_dict()["param_groups"][0]["lr"]
+
+                self.writer.addScalar("Loss/train", loss, n_iter)
+                self.writer.addScalar("Acc/train", acc, n_iter)
+                self.writer.addScalar("Acc/lr", lr, n_iter)
 
                 n_iter += 1
-            end_time = time.process_time()
-            execution_time = end_time - start_time
-            print(f"epoch {i} finished, costing {execution_time/60.0} minutes")
 
-            if n_epoch % MASH_CONFIG.freq_ckpt == 0:
-                # model.eval() # avg_loss_pred, avg_acc = val_step(model, val_loader, MASH_CONFIG.pred_type)
-                # writer.addScalar('Loss/val', avg_loss_pred, n_iter)
-                # writer.addScalar('Acc/val', avg_acc, n_iter)
-                # print('[val] epcho:', n_epoch,' ,iter:',n_iter," avg_loss_pred:",avg_loss_pred, " acc:",avg_acc)
-                if MASH_CONFIG.multi_gpu:
-                    torch.save(
-                        {
-                            "model": self.model.module.state_dict(),
-                            "opt": opt.state_dict(),
-                            "n_epoch": n_epoch,
-                            "n_iter": n_iter,
-                        },
-                        f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{start_time}.ckpt",
-                    )
-                # {avg_loss_pred:.4}_{avg_acc:.4}.ckpt')
-                else:
-                    torch.save(
-                        {
-                            "model": self.model.state_dict(),
-                            "opt": opt.state_dict(),
-                            "n_epoch": n_epoch,
-                            "n_iter": n_iter,
-                        },
-                        f"{self.dir_ckpt}/{n_epoch}_{n_iter}_{start_time}.ckpt",
-                    )  # {avg_loss_pred:.4}_{avg_acc:.4}.ckpt')
+            self.model.eval()
+            avg_loss_pred, avg_acc = self.val_step()
+            self.writer.addScalar("Loss/val", avg_loss_pred, n_iter)
+            self.writer.addScalar("Acc/val", avg_acc, n_iter)
+            print(
+                "[val] epcho:",
+                n_epoch,
+                " ,iter:",
+                n_iter,
+                " avg_loss_pred:",
+                avg_loss_pred,
+                " acc:",
+                avg_acc,
+            )
+
+            torch.save(
+                {
+                    "model": self.model.module.state_dict(),
+                    "opt": opt.state_dict(),
+                    "n_epoch": n_epoch,
+                    "n_iter": n_iter,
+                },
+                f"{self.dir_ckpt}/{n_epoch}_{n_iter}.ckpt",
+            )
+
             if n_epoch > 0 and n_epoch % MASH_CONFIG.freq_decay == 0:
                 for g in opt.param_groups:
                     g["lr"] = g["lr"] * MASH_CONFIG.weight_decay

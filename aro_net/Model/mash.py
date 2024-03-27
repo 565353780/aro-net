@@ -16,7 +16,6 @@ class MashNet(nn.Module):
         tfm_pos_enc=MASH_CONFIG.tfm_pos_enc,
         cond_pn=MASH_CONFIG.cond_pn,
         pn_use_bn=MASH_CONFIG.pn_use_bn,
-        pred_type=MASH_CONFIG.pred_type,
         norm_coord=MASH_CONFIG.norm_coord,
     ):
         super().__init__()
@@ -31,7 +30,6 @@ class MashNet(nn.Module):
         self.n_qry = n_qry
         self.cone_angle_th = cone_angle_th
         self.cond_pn = cond_pn
-        self.pred_type = pred_type
         self.norm_coord = norm_coord
         if self.cond_pn:
             self.point_net = ResnetPointnetCondBN(dim=4, reduce=True)
