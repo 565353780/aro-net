@@ -6,7 +6,7 @@ import numpy as np
 import torch.optim as optim
 
 from torch import autograd
-from tqdm import trange
+from tqdm import trange, tqdm
 
 from aro_net.Config.config import MASH_CONFIG
 from aro_net.Lib import libmcubes
@@ -109,7 +109,12 @@ class Generator3D(object):
 
         ret = []
 
-        for idx in range(n_chunk):
+        for_data = range(n_chunk)
+        if self.device == "cpu":
+            print("[INFO][Generator3D::eval_points]")
+            print("\t start detect occ...")
+            for_data = tqdm(for_data)
+        for idx in for_data:
             data_chunk = {}
             for key in data:
                 if key == "ftrs":

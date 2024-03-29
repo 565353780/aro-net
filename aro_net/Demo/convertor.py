@@ -6,9 +6,7 @@ from aro_net.Module.convertor import Convertor
 
 
 def demo():
-    dataset_root_folder_path = (
-        "/home/chli/Dataset/aro_net/data/shapenet/mash/100anc/mash/02691156/"
-    )
+    dataset_root_folder_path = "/home/chli/Dataset/aro_net/data/shapenet/mash/02691156/"
     save_split_folder_path = (
         "/home/chli/Dataset/aro_net/data/shapenet/04_splits/02691156/mash/"
     )
@@ -16,7 +14,7 @@ def demo():
         "/home/chli/Dataset/aro_net/data/shapenet/02_qry_pts_occnet/02691156/"
     )
     save_feature_folder_path = (
-        "/home/chli/Dataset/aro_net/data/shapenet/anchor_feature/100anc/02691156/"
+        "/home/chli/Dataset/aro_net/data/shapenet/anchor_feature/02691156/"
     )
     train_scale = 0.8
     val_scale = 0.1

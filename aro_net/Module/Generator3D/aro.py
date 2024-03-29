@@ -6,7 +6,7 @@ import numpy as np
 import torch.optim as optim
 
 from torch import autograd
-from tqdm import trange
+from tqdm import trange, tqdm
 
 from aro_net.Config.config import ARO_CONFIG
 from aro_net.Lib import libmcubes
@@ -74,11 +74,18 @@ class Generator3D(object):
     def eval_points(self, data):
         n_qry = data["qry"].shape[1]
         chunk_size = self.chunk_size
+        if self.device == "cpu":
+            chunk_size = int(chunk_size * 0.1)
         n_chunk = math.ceil(n_qry / chunk_size)
 
         ret = []
 
-        for idx in range(n_chunk):
+        for_data = range(n_chunk)
+        if self.device == "cpu":
+            print("[INFO][Generator3D::eval_points]")
+            print("\t start detect occ...")
+            for_data = tqdm(for_data)
+        for idx in for_data:
             data_chunk = {}
             for key in data:
                 if key == "qry":

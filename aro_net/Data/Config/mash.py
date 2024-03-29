@@ -21,12 +21,12 @@ class Config(object):
         self.tfm_pos_enc = False
         # common hyper-parameters
         self.device = "cuda"
-        self.mode = "test"
+        self.mode = "train"
         self.n_bs = 2
         self.n_epochs = 600
-        self.lr = 1e-6
-        self.freq_decay = 1
-        self.weight_decay = 0.5
+        self.lr = 1e-3
+        self.freq_decay = 10
+        self.weight_decay = 0.9
         # Marching Cube realted
         self.mc_chunk_size = 3000
         self.mc_res0 = 16
