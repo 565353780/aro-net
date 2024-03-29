@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from tqdm import tqdm
+from typing import Union
 from torch.utils.data import DataLoader
 
 
@@ -16,7 +17,7 @@ from aro_net.Model.mash import MashNet
 
 from aro_net.Module.logger import Logger
 
-mode = "mash"
+mode = "aro"
 
 match mode:
     case "aro":
@@ -49,7 +50,7 @@ def cal_loss_pred(x, gt):
 
 
 class Trainer(object):
-    def __init__(self) -> None:
+    def __init__(self, model_file_path: Union[str, None] = None) -> None:
         current_time = getCurrentTime()
 
         self.dir_ckpt = "./output/" + current_time + "/"
@@ -73,7 +74,21 @@ class Trainer(object):
         self.model = NET().to(CONFIG.device)
 
         self.writer = Logger(self.log_folder_path)
+
+        if model_file_path is not None:
+            self.loadModel(model_file_path)
         return
+
+    def loadModel(self, model_file_path: str) -> bool:
+        if not os.path.exists(model_file_path):
+            print("[ERROR][Trainer::loadModel]")
+            print("\t model file not exist!")
+            print("\t model_file_path:", model_file_path)
+            return False
+
+        model_state_dict = torch.load(model_file_path)
+        self.model.load_state_dict(model_state_dict["model"])
+        return True
 
     def train_step(self, batch, opt):
         for key in batch:

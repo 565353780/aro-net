@@ -62,7 +62,7 @@ class MashDataset(Dataset):
         )
 
         mash_params_file_path = (
-            f"{self.dir_dataset}/mash/100anc/mash/{category}/{full_shape_id}.npy"
+            f"{self.dir_dataset}/mash/{category}/{full_shape_id}.npy"
         )
 
         mash_params = np.load(mash_params_file_path, allow_pickle=True).item()
@@ -76,30 +76,28 @@ class MashDataset(Dataset):
 
         if self.split == "train":
             np.random.seed()
-            positive_occ_idxs = np.where(occ > 0.5)[0]
-            negative_occ_idxs = np.where(occ < 0.5)[0]
-
-            positive_occ_num = self.n_qry // 2
-
-            if positive_occ_num > positive_occ_idxs.shape[0]:
-                positive_occ_num = positive_occ_idxs.shape[0]
-
-            negative_occ_num = self.n_qry - positive_occ_num
-
-            positive_idxs = np.random.choice(positive_occ_idxs, positive_occ_num)
-            negative_idxs = np.random.choice(negative_occ_idxs, negative_occ_num)
-
-            idxs = np.hstack([positive_idxs, negative_idxs])
-
-            perm = idxs[np.random.permutation(self.n_qry)]
-
-            qry = qry[perm]
-            occ = occ[perm]
         else:
             np.random.seed(1234)
-            perm = np.random.permutation(len(qry))[: self.n_qry]
-            qry = qry[perm]
-            occ = occ[perm]
+
+        positive_occ_idxs = np.where(occ > 0.5)[0]
+        negative_occ_idxs = np.where(occ < 0.5)[0]
+
+        positive_occ_num = self.n_qry // 2
+
+        if positive_occ_num > positive_occ_idxs.shape[0]:
+            positive_occ_num = positive_occ_idxs.shape[0]
+
+        negative_occ_num = self.n_qry - positive_occ_num
+
+        positive_idxs = np.random.choice(positive_occ_idxs, positive_occ_num)
+        negative_idxs = np.random.choice(negative_occ_idxs, negative_occ_num)
+
+        idxs = np.hstack([positive_idxs, negative_idxs])
+
+        perm = idxs[np.random.permutation(self.n_qry)]
+
+        qry = qry[perm]
+        occ = occ[perm]
 
         ftrs = toMashFileAnchorFeature(mash_params_file_path, qry, "cpu").numpy()
 

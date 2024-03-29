@@ -5,7 +5,7 @@ class Config(object):
         self.name_dataset = "shapenet"
         self.name_single = "fertility"
         self.n_wk = 4
-        self.categories_train = ["03001627"]
+        self.categories_train = ["02691156"]
         self.categories_test = ["02691156", "03001627"]
         self.add_noise = 0
         # ARO-Net hyper-parameters

@@ -4,21 +4,25 @@ import numpy as np
 from torch.utils.data import Dataset
 from scipy.spatial.transform import Rotation
 
+from aro_net.Config.config import ARO_CONFIG
+
 
 class SingleShapeDataset(Dataset):
-    def __init__(self, split, args):
+    def __init__(self, split):
         super().__init__()
         self.split = split
-        self.n_anc = args.n_anc
-        self.n_qry = args.n_qry
-        self.shape = args.name_single
-        self.mesh = trimesh.load(f"./{args.dir_data}/single/{self.shape}.ply")
-        self.vox = trimesh.load(f"./{args.dir_data}/single/{self.shape}.binvox")
-        self.anc_0 = np.load(f"./{args.dir_data}/anchors/sphere{str(self.n_anc)}.npy")
+        self.n_anc = ARO_CONFIG.n_anc
+        self.n_qry = ARO_CONFIG.n_qry
+        self.shape = ARO_CONFIG.name_single
+        self.mesh = trimesh.load(f"./{ARO_CONFIG.dir_data}/single/{self.shape}.ply")
+        self.vox = trimesh.load(f"./{ARO_CONFIG.dir_data}/single/{self.shape}.binvox")
+        self.anc_0 = np.load(
+            f"./{ARO_CONFIG.dir_data}/anchors/sphere{str(self.n_anc)}.npy"
+        )
         self.anc = np.concatenate([self.anc_0[i::3] / (2**i) for i in range(3)])
-        self.n_pts_train = args.n_pts_train
-        self.n_pts_val = args.n_pts_val
-        self.n_pts_test = args.n_pts_test
+        self.n_pts_train = ARO_CONFIG.n_pts_train
+        self.n_pts_val = ARO_CONFIG.n_pts_val
+        self.n_pts_test = ARO_CONFIG.n_pts_test
         if split == "train":
             self.n_pts = self.n_pts_train
         elif split == "test":

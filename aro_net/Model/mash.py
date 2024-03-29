@@ -15,11 +15,6 @@ class MashNet(nn.Module):
         cond_pn=MASH_CONFIG.cond_pn,
     ):
         super().__init__()
-        # FIXME check if the anchor is same as asdf
-        if n_anc != 100:
-            print("[MashNet]: n_anc should be 100!")
-            raise NotImplementedError
-
         self.hidden_dim = 128
         self.n_anc = n_anc
         self.n_local = n_local
@@ -41,7 +36,7 @@ class MashNet(nn.Module):
 
         # the input ftrs size is n_anc x 5 for [phi, theta, dq, is_in_mask, dist_from_sh]
         self.fc_1 = nn.Sequential(
-            nn.Conv1d(30, self.hidden_dim, 1),  # FIXME
+            nn.Conv1d(45, self.hidden_dim, 1),  # FIXME
             nn.BatchNorm1d(self.hidden_dim),
             nn.ReLU(),
         )
@@ -57,6 +52,7 @@ class MashNet(nn.Module):
         )
         self.att_decoder = nn.TransformerEncoder(self.att_layer, num_layers=6)
         self.fc_out = nn.Conv1d(self.n_anc * self.hidden_dim, 1, 1)
+        return
 
     def forward(self, feed_dict):
         qry, ftrs = feed_dict["qry"], feed_dict["ftrs"]

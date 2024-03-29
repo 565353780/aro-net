@@ -105,6 +105,8 @@ class Generator3D(object):
         )
 
         chunk_size = self.chunk_size
+        if self.device == "cpu":
+            chunk_size = int(chunk_size * 0.1)
         n_chunk = math.ceil(n_qry / chunk_size)
 
         ret = []

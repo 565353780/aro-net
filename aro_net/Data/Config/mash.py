@@ -14,7 +14,7 @@ class Config(object):
         self.n_pts_test = 1024
         self.cone_angle_th = 15.0
         self.n_local = 16
-        self.n_anc = 100
+        self.n_anc = 40
         self.n_qry = 512
         self.pn_use_bn = False
         self.cond_pn = False
@@ -22,10 +22,10 @@ class Config(object):
         # common hyper-parameters
         self.device = "cuda"
         self.mode = "train"
-        self.n_bs = 2
+        self.n_bs = 6
         self.n_epochs = 600
-        self.lr = 1e-3
-        self.freq_decay = 10
+        self.lr = 1e-5
+        self.freq_decay = 100
         self.weight_decay = 0.9
         # Marching Cube realted
         self.mc_chunk_size = 3000
