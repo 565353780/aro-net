@@ -9,17 +9,13 @@ class MashNet(nn.Module):
         self,
         n_anc=MASH_CONFIG.n_anc,
         n_qry=MASH_CONFIG.n_qry,
-        n_local=MASH_CONFIG.n_local,
-        cone_angle_th=MASH_CONFIG.cone_angle_th,
         tfm_pos_enc=MASH_CONFIG.tfm_pos_enc,
         cond_pn=MASH_CONFIG.cond_pn,
     ):
         super().__init__()
         self.hidden_dim = 128
         self.n_anc = n_anc
-        self.n_local = n_local
         self.n_qry = n_qry
-        self.cone_angle_th = cone_angle_th
         self.cond_pn = cond_pn
         self.tfm_pos_enc = tfm_pos_enc
         if self.cond_pn:
