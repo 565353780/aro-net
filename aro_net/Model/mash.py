@@ -32,7 +32,7 @@ class MashNet(nn.Module):
 
         # the input ftrs size is n_anc x 5 for [phi, theta, dq, is_in_mask, dist_from_sh]
         self.fc_1 = nn.Sequential(
-            nn.Conv1d(45, self.hidden_dim, 1),  # FIXME
+            nn.Conv1d(50, self.hidden_dim, 1),  # FIXME
             nn.BatchNorm1d(self.hidden_dim),
             nn.ReLU(),
         )

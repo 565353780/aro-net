@@ -21,10 +21,10 @@ def toMashAnchorFeature(mash: Mash, query_points: torch.Tensor) -> torch.Tensor:
     for i in range(mash.anchor_num):
         inv_rotate_matrix = mash_cpp.toSingleRotateMatrix(-mash.rotate_vectors[i])
 
-        local_rotate_query_points = (query_points - mash.positions[i]).reshape(-1, 3, 1)
+        local_rotate_query_points = query_points - mash.positions[i]
 
         local_query_points = torch.matmul(
-            inv_rotate_matrix, local_rotate_query_points
+            inv_rotate_matrix, local_rotate_query_points.reshape(-1, 3, 1)
         ).reshape(-1, 3)
 
         local_query_dists = torch.norm(local_query_points, p=2, dim=1)
@@ -46,17 +46,32 @@ def toMashAnchorFeature(mash: Mash, query_points: torch.Tensor) -> torch.Tensor:
             local_polars[:, 1],
         )
 
-        # FIXME: need to set out of range point dists to 0?
-        sh_dists[~in_mask_mask] = 0.0
+        in_sh_dist_mask = local_query_dists <= sh_dists
 
+        true_mask = in_mask_mask & in_sh_dist_mask
+
+        # FIXME: need to set out of range point dists to 0?
+        # sh_dists[~in_mask_mask] = 0.0
+
+        label_diffs = local_rotate_query_points.type(torch.float64)
         label_polars = local_polars.type(torch.float64)
         label_dists = local_query_dists.reshape(-1, 1).type(torch.float64)
         label_in_mask = in_mask_mask.reshape(-1, 1).type(torch.float64)
+        label_in_sh_dist = in_sh_dist_mask.reshape(-1, 1).type(torch.float64)
+        label_in_cone = true_mask.reshape(-1, 1).type(torch.float64)
         label_sh_dists = sh_dists.reshape(-1, 1).type(torch.float64)
 
         ftr = torch.hstack(
-            (label_polars, label_dists, label_in_mask, label_sh_dists)
-        ).reshape(1, -1, 5)
+            (
+                label_diffs,
+                label_polars,
+                label_dists,
+                label_in_mask,
+                label_in_sh_dist,
+                label_in_cone,
+                label_sh_dists,
+            )
+        ).unsqueeze(0)
         ftrs.append(ftr)
 
     ftrs = torch.vstack(ftrs)
