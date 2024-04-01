@@ -55,10 +55,18 @@ class Detector(object):
 
     @torch.no_grad()
     def detect(self, points: np.ndarray) -> trimesh.Trimesh:
-        query_points = sampleQueryPoints(points, 512)
+        min_bound = np.min(points, axis=0)
+        max_bound = np.max(points, axis=0)
+        center = (min_bound + max_bound) / 2.0
+
+        scale = np.max(max_bound - min_bound)
+
+        trans_points = (points - center) / scale
+
+        query_points = sampleQueryPoints(trans_points, 512)
 
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
+        pcd.points = o3d.utility.Vector3dVector(trans_points)
 
         sample_pcd = pcd.farthest_point_down_sample(1024)
         sample_points = np.asarray(sample_pcd.points).astype(np.float32)
@@ -76,6 +84,8 @@ class Detector(object):
             mesh = out
         else:
             mesh = out[0]
+
+        mesh.vertices = mesh.vertices * scale + center
 
         return mesh
 

@@ -6,11 +6,17 @@ from aro_net.Module.Detector.aro import Detector
 
 def demo():
     model_file_path = "./output/aro-net-v1/6_16611.ckpt"
-    model_file_path = "./output/aro-net-v2-uniform_sample_occ/118_282387.ckpt"
+    model_file_path = "./output/4_7080.ckpt"
     pcd_file_path = (
         "./data/shapenet/01_pcds/02691156/1024/d1a887a47991d1b3bc0909d98a1ff2b4.npy"
     )
-    points = np.load(pcd_file_path)
+
+    pcd_file_path = "./output/input_pcd/airplane_pcd.ply"
+
+    # points = np.load(pcd_file_path)
+
+    pcd = o3d.io.read_point_cloud(pcd_file_path)
+    points = np.asarray(pcd.points)
 
     detector = Detector(model_file_path)
 

@@ -32,9 +32,7 @@ def toAROMesh(
     save_pcd_file_path = "./output/" + input_pcd_file_name.replace(".ply", ".obj")
 
     pcd = o3d.io.read_point_cloud(input_pcd_file_path)
-    scales = np.max(pcd.get_axis_aligned_bounding_box().get_extent())
-
-    gt_points = np.asarray(pcd.points) / scales
+    gt_points = np.asarray(pcd.points)
 
     mesh = detector.detect(gt_points)
 
