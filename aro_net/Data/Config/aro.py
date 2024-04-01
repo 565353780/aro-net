@@ -22,14 +22,14 @@ class Config(object):
         # common hyper-parameters
         self.device = "cuda"
         self.mode = "test"
-        self.n_bs = 2
+        self.n_bs = 1
         self.n_epochs = 600
         self.lr = 1e-5
         self.freq_decay = 100
         self.weight_decay = 0.5
         # Marching Cube realted
         self.mc_chunk_size = 3000
-        self.mc_res0 = 16
+        self.mc_res0 = 32
         self.mc_up_steps = 2
         self.mc_threshold = 0.5
 

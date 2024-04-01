@@ -57,9 +57,15 @@ class Detector(object):
     def detect(self, points: np.ndarray) -> trimesh.Trimesh:
         query_points = sampleQueryPoints(points, 512)
 
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+
+        sample_pcd = pcd.farthest_point_down_sample(1024)
+        sample_points = np.asarray(sample_pcd.points).astype(np.float32)
+
         # FIXME: qry is unused for current inference
         data = {
-            "pcd": torch.from_numpy(points).unsqueeze(0).to(ARO_CONFIG.device),
+            "pcd": torch.from_numpy(sample_points).unsqueeze(0).to(ARO_CONFIG.device),
             "qry": torch.from_numpy(query_points).unsqueeze(0).to(ARO_CONFIG.device),
             "anc": self.anc,
         }

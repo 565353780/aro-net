@@ -166,6 +166,7 @@ cython_debug/
 *.so
 mcubes.cpp
 simplify_mesh.cpp
+ssl
 
 # output
 logs
