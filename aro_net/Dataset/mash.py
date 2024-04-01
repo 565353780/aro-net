@@ -72,7 +72,7 @@ class MashDataset(Dataset):
         rotate_vectors = mash_params["rotate_vectors"]
         positions = mash_params["positions"]
 
-        params = np.hstack([rotate_vectors, positions, mask_params, sh_params])
+        params = np.hstack([mask_params, sh_params, rotate_vectors, positions])
 
         if self.split == "train":
             np.random.seed()

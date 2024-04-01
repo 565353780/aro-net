@@ -135,9 +135,9 @@ class ARONet(nn.Module):
     def forward(self, feed_dict):
         pcd, qry, anc = feed_dict["pcd"], feed_dict["qry"], feed_dict["anc"]
         n_bs, n_qry = qry.shape[0], qry.shape[1]
-        self.n_qry = (
-            n_qry  # when doing marching cube, the number of query points may change
-        )
+
+        # when doing marching cube, the number of query points may change
+        self.n_qry = n_qry
 
         # cast cone to capture local points (hit), and calculate observations from query points
         hit = self.cast_cone(pcd, anc, qry)
@@ -166,6 +166,7 @@ class ARONet(nn.Module):
         feat_local_radial = torch.cat(
             [feat_anc2qry.permute(0, 3, 2, 1), feat_local.permute(0, 3, 2, 1)], 1
         )
+
         x = self.fc_1(feat_local_radial.reshape(n_bs, -1, self.n_anc * self.n_qry))
         x = self.fc_2(x)
         x = x.view(n_bs, -1, self.n_anc, self.n_qry).permute(

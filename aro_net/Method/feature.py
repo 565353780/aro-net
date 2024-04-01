@@ -10,7 +10,7 @@ def toMashAnchorFeature(mash: Mash, query_points: torch.Tensor) -> torch.Tensor:
     """receive a qry numpy array, output the anchor feature from each anchor
 
     Returns:
-       np.ndarray: num_anchor x 5. 5 stands for the feature of each anchor: [theta, phi, d_q, 1/0, d].
+       np.ndarray: num_qry x num_anchor x 5. 5 stands for the feature of each anchor: [theta, phi, d_q, 1/0, d].
        theta, phi is the spherical coordinate of the query point from the anchor;
        d_q is the distance between query point and the anchor;
        1/0 is whether the query point is within the  anchor's mask;
@@ -21,9 +21,11 @@ def toMashAnchorFeature(mash: Mash, query_points: torch.Tensor) -> torch.Tensor:
     for i in range(mash.anchor_num):
         inv_rotate_matrix = mash_cpp.toSingleRotateMatrix(-mash.rotate_vectors[i])
 
-        local_rotate_query_points = query_points - mash.positions[i]
+        local_rotate_query_points = (query_points - mash.positions[i]).reshape(-1, 3, 1)
 
-        local_query_points = torch.matmul(local_rotate_query_points, inv_rotate_matrix)
+        local_query_points = torch.matmul(
+            inv_rotate_matrix, local_rotate_query_points
+        ).reshape(-1, 3)
 
         local_query_dists = torch.norm(local_query_points, p=2, dim=1)
 
@@ -68,14 +70,14 @@ def toMashFileAnchorFeature(
     query_points: Union[torch.Tensor, np.ndarray],
     device: str = "cpu",
 ) -> torch.Tensor:
-    if isinstance(query_points, np.ndarray):
-        query_points = torch.from_numpy(query_points).to(device)
-
     mask_boundary_sample_num = 0
     sample_polar_num = 0
     sample_point_scale = 0.0
     idx_dtype = torch.int64
-    dtype = query_points.dtype
+    dtype = torch.float64
+
+    if isinstance(query_points, np.ndarray):
+        query_points = torch.from_numpy(query_points).type(dtype).to(device)
 
     mash = Mash.fromParamsFile(
         mash_params_file_path,

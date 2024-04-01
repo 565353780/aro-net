@@ -12,9 +12,7 @@ class ARONetDataset(Dataset):
         self.n_anc = ARO_CONFIG.n_anc
         self.n_qry = ARO_CONFIG.n_qry
         self.dir_dataset = os.path.join(ARO_CONFIG.dir_data, ARO_CONFIG.name_dataset)
-        self.anc_0 = np.load(
-            f"./{ARO_CONFIG.dir_data}/anchors/sphere{str(self.n_anc)}.npy"
-        )
+        self.anc_0 = np.load(f"./aro_net/Data/anchors/sphere{str(self.n_anc)}.npy")
         self.anc = np.concatenate([self.anc_0[i::3] / (2**i) for i in range(3)])
         self.name_dataset = ARO_CONFIG.name_dataset
         self.n_pts_train = ARO_CONFIG.n_pts_train

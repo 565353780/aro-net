@@ -17,7 +17,7 @@ from aro_net.Model.mash import MashNet
 
 from aro_net.Module.logger import Logger
 
-mode = "aro"
+mode = "mash"
 
 match mode:
     case "aro":
@@ -181,15 +181,16 @@ class Trainer(object):
                 avg_acc,
             )
 
-            torch.save(
-                {
-                    "model": self.model.state_dict(),
-                    "opt": opt.state_dict(),
-                    "n_epoch": n_epoch,
-                    "n_iter": n_iter,
-                },
-                f"{self.dir_ckpt}/{n_epoch}_{n_iter}.ckpt",
-            )
+            if False:
+                torch.save(
+                    {
+                        "model": self.model.state_dict(),
+                        "opt": opt.state_dict(),
+                        "n_epoch": n_epoch,
+                        "n_iter": n_iter,
+                    },
+                    f"{self.dir_ckpt}/{n_epoch}_{n_iter}.ckpt",
+                )
 
             if n_epoch > 0 and n_epoch % CONFIG.freq_decay == 0:
                 for g in opt.param_groups:

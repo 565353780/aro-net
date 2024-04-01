@@ -1,7 +1,7 @@
 class Config(object):
     def __init__(self) -> None:
         # dataset related
-        self.dir_data = "./data"
+        self.dir_data = "/home/chli/Dataset/aro_net/data"
         self.name_dataset = "shapenet"
         self.name_single = "fertility"
         self.n_wk = 4
