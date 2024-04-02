@@ -167,6 +167,7 @@ cython_debug/
 mcubes.cpp
 simplify_mesh.cpp
 ssl
+.DS_Store
 
 # output
 logs
