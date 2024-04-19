@@ -20,7 +20,7 @@ class Config(object):
         self.cond_pn = False
         self.tfm_pos_enc = False
         # common hyper-parameters
-        self.device = "cuda"
+        self.device = "cuda:0"
         self.mode = "test"
         self.n_bs = 1
         self.n_epochs = 600
@@ -29,7 +29,7 @@ class Config(object):
         self.weight_decay = 0.5
         # Marching Cube realted
         self.mc_chunk_size = 3000
-        self.mc_res0 = 32
+        self.mc_res0 = 64
         self.mc_up_steps = 2
         self.mc_threshold = 0.5
 

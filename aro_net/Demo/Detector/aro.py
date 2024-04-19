@@ -5,14 +5,15 @@ from aro_net.Module.Detector.aro import Detector
 
 
 def demo():
-    model_file_path = "./output/aro-net-v3/4_7080.ckpt"
-    pcd_file_path = (
-        "./data/shapenet/01_pcds/02691156/1024/d1a887a47991d1b3bc0909d98a1ff2b4.npy"
-    )
-
-    points = np.load(pcd_file_path)
-
     if False:
+        model_file_path = "./output/aro-net-v3/4_7080.ckpt"
+        pcd_file_path = (
+            "./data/shapenet/01_pcds/02691156/1024/d1a887a47991d1b3bc0909d98a1ff2b4.npy"
+        )
+
+        points = np.load(pcd_file_path)
+
+    if True:
         model_file_path = "./output/4_7080.ckpt"
 
         pcd_file_path = "./output/input_pcd/airplane_pcd.ply"
