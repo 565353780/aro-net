@@ -6,8 +6,8 @@ from aro_net.Module.trainer import Trainer
 
 
 def demo():
-    model_file_path = "./output/aro-net-v2-uniform_sample_occ/118_282387.ckpt"
-    model_file_path = None
+    model_file_path = "./output/pretrain-aro/4_7080.ckpt"
+    #model_file_path = None
 
     trainer = Trainer(model_file_path)
 

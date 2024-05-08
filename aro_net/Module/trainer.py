@@ -17,7 +17,7 @@ from aro_net.Model.mash import MashNet
 
 from aro_net.Module.logger import Logger
 
-mode = "mash"
+mode = "aro"
 
 match mode:
     case "aro":
@@ -181,7 +181,7 @@ class Trainer(object):
                 avg_acc,
             )
 
-            if False:
+            if True:
                 torch.save(
                     {
                         "model": self.model.state_dict(),
