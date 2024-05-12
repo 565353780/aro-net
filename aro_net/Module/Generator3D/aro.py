@@ -81,7 +81,7 @@ class Generator3D(object):
         ret = []
 
         for_data = range(n_chunk)
-        if self.device == "cpu":
+        if self.device == "cpu" or True:
             print("[INFO][Generator3D::eval_points]")
             print("\t start detect occ...")
             for_data = tqdm(for_data)
