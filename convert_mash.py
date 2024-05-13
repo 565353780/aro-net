@@ -9,6 +9,7 @@ def demo():
     print('start convert new data...')
 
     model_file_path = "./output/pretrain-aro/4_7080.ckpt"
+    sample_point_num = 4000
 
     detector = Detector(model_file_path)
 
