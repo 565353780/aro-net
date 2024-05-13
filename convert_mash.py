@@ -13,7 +13,6 @@ def demo():
     detector = Detector(model_file_path)
 
     first_solve_list = ['03001627', '02691156']
-    first_solve_list = ['03001627']
     for category_id in first_solve_list:
         compare_folder_path = '../ma-sh/output/metric_manifold_result_selected/ShapeNet/' + category_id + '/'
 
@@ -22,9 +21,8 @@ def demo():
             first_solve_shape_ids = os.listdir(compare_folder_path)
         #first_solve_shape_ids = None
 
-        dataset_folder_path = '/home/chli/chLi/Dataset/SampledPcd_Manifold/ShapeNet/03001627/'
-        sample_point_num = 4000
-        save_folder_path = '/home/chli/chLi/Dataset/ARONet_Manifold_Recon_' + str(sample_point_num) + '/ShapeNet/03001627/'
+        dataset_folder_path = '/home/chli/chLi/Dataset/SampledPcd_Manifold/ShapeNet/' + category_id + '/'
+        save_folder_path = '/home/chli/chLi/Dataset/ARONet_Manifold_Recon_' + str(sample_point_num) + '/ShapeNet/' + category_id + '/'
         os.makedirs(save_folder_path, exist_ok=True)
 
         solved_shape_names = os.listdir(save_folder_path)
