@@ -8,13 +8,11 @@ import torch.optim as optim
 from torch import autograd
 from tqdm import trange, tqdm
 
-from aro_net.Config.config import MASH_CONFIG
+from aro_net.Config.config import ARO_CONFIG
 from aro_net.Lib import libmcubes
 from aro_net.Lib.libmise import MISE
 from aro_net.Lib.common import make_3d_grid
 from aro_net.Lib.libsimplify import simplify_mesh
-
-from aro_net.Method.feature import toMashFileAnchorFeature
 
 
 class Generator3D(object):
@@ -45,22 +43,21 @@ class Generator3D(object):
         with_normals=False,
         padding=0.1,
         sample=False,
-        device=MASH_CONFIG.device,
-        threshold=MASH_CONFIG.mc_threshold,
-        resolution0=MASH_CONFIG.mc_res0,
-        upsampling_steps=MASH_CONFIG.mc_up_steps,
-        chunk_size=MASH_CONFIG.mc_chunk_size,
+        device=ARO_CONFIG.device,
+        threshold=ARO_CONFIG.mc_threshold,
+        resolution0=ARO_CONFIG.mc_res0,
+        upsampling_steps=ARO_CONFIG.mc_up_steps,
+        chunk_size=ARO_CONFIG.mc_chunk_size,
         input_type=None,
         vol_info=None,
         vol_bound=None,
         simplify_nfaces=None,
     ):
-        # self.model = model.to(device)
         self.model = model
+        self.device = device
         self.points_batch_size = points_batch_size
         self.refinement_step = refinement_step
         self.threshold = threshold
-        self.device = device
         self.resolution0 = resolution0
         self.upsampling_steps = upsampling_steps
         self.with_normals = with_normals
@@ -74,36 +71,8 @@ class Generator3D(object):
         if vol_info is not None:
             self.input_vol, _, _ = vol_info
 
-    def eval_points(self, mash_params_file_path: str, data: dict):
-        qry_pts = data["qry"]
-
-        n_qry = qry_pts.shape[1]
-
-        q_ftrs = (
-            toMashFileAnchorFeature(mash_params_file_path, qry_pts[0], "cuda:0")
-            .cpu()
-            .numpy()
-        )
-
-        mash_params = np.load(mash_params_file_path, allow_pickle=True).item()
-
-        mask_params = mash_params["mask_params"]
-        sh_params = mash_params["sh_params"]
-        rotate_vectors = mash_params["rotate_vectors"]
-        positions = mash_params["positions"]
-
-        params = np.hstack([rotate_vectors, positions, mask_params, sh_params])
-
-        n_ftrs = q_ftrs.shape[0]
-        params = np.tile(params[np.newaxis, :, :], reps=(n_ftrs, 1, 1))
-        q_ftrs = np.concatenate((params, q_ftrs), axis=-1)
-
-        q_ftrs = (
-            torch.tensor(np.expand_dims(q_ftrs, axis=0))
-            .to(self.device)
-            .to(torch.float32)
-        )
-
+    def eval_points(self, data):
+        n_qry = data["qry"].shape[1]
         chunk_size = self.chunk_size
         if self.device == "cpu":
             chunk_size = int(chunk_size * 0.1)
@@ -119,19 +88,13 @@ class Generator3D(object):
         for idx in for_data:
             data_chunk = {}
             for key in data:
-                if key == "ftrs":
-                    continue
                 if key == "qry":
                     if idx < n_chunk - 1:
                         data_chunk[key] = data[key][
                             :, chunk_size * idx : chunk_size * (idx + 1), ...
                         ]
-                        data_chunk["ftrs"] = q_ftrs[
-                            :, chunk_size * idx : chunk_size * (idx + 1), ...
-                        ]
                     else:
                         data_chunk[key] = data[key][:, chunk_size * idx : n_qry, ...]
-                        data_chunk["ftrs"] = q_ftrs[:, chunk_size * idx : n_qry, ...]
                 else:
                     data_chunk[key] = data[key]
 
@@ -142,7 +105,7 @@ class Generator3D(object):
         ret = ret.squeeze(0)
         return ret
 
-    def generate_mesh(self, mash_params_file_path: str, return_stats=True):
+    def generate_mesh(self, data, return_stats=True):
         """Generates the output mesh.
         Args:
             data (tensor): data tensor
@@ -150,15 +113,14 @@ class Generator3D(object):
         """
         # self.model.eval()
         stats_dict = {}
-
-        mesh = self.generate_from_latent(mash_params_file_path, stats_dict=stats_dict)
+        mesh = self.generate_from_latent(data, stats_dict=stats_dict)
 
         if return_stats:
             return mesh, stats_dict
         else:
             return mesh
 
-    def generate_from_latent(self, mash_params_file_path: str, c=None, stats_dict={}):
+    def generate_from_latent(self, data: dict, c=None, stats_dict={}):
         """Generates mesh from latent.
             Works for shapes normalized to a unit cube
         Args:
@@ -172,14 +134,12 @@ class Generator3D(object):
         # Compute bounding box size
         box_size = 1 + self.padding
 
-        data = {}
-
         # Shortcut
         if self.upsampling_steps == 0:
             nx = self.resolution0
             pointsf = box_size * make_3d_grid((-0.5,) * 3, (0.5,) * 3, (nx,) * 3)
             data["qry"] = pointsf.unsqueeze(0).to(self.device)
-            values = self.eval_points(mash_params_file_path, data).cpu().numpy()
+            values = self.eval_points(data).cpu().numpy()
             value_grid = values.reshape(nx, nx, nx)
         else:
             mesh_extractor = MISE(self.resolution0, self.upsampling_steps, threshold)
@@ -193,7 +153,7 @@ class Generator3D(object):
                 pointsf = torch.FloatTensor(pointsf).to(self.device)
                 data["qry"] = pointsf.unsqueeze(0).to(self.device)
                 # Evaluate model and update
-                values = self.eval_points(mash_params_file_path, data).cpu().numpy()
+                values = self.eval_points(data).cpu().numpy()
                 values = values.astype(np.float64)
                 mesh_extractor.update(points, values)
                 points = mesh_extractor.query()

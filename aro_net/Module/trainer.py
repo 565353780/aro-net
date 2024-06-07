@@ -8,12 +8,11 @@ from typing import Union
 from torch.utils.data import DataLoader
 
 
-from aro_net.Config.config import ARO_CONFIG, MASH_CONFIG
+from aro_net.Config.config import ARO_CONFIG
 from aro_net.Dataset.aro import ARONetDataset
 from aro_net.Dataset.single_shape import SingleShapeDataset
 from aro_net.Method.time import getCurrentTime
 from aro_net.Model.aro import ARONet
-from aro_net.Model.mash import MashNet
 
 from aro_net.Module.logger import Logger
 
@@ -28,12 +27,6 @@ match mode:
         CONFIG = ARO_CONFIG
         DATASET = SingleShapeDataset
         NET = ARONet
-    case "mash":
-        from aro_net.Dataset.mash import MashDataset
-
-        CONFIG = MASH_CONFIG
-        DATASET = MashDataset
-        NET = MashNet
     case _:
         exit()
 
@@ -155,7 +148,7 @@ class Trainer(object):
         for i in range(epoch_latest, CONFIG.n_epochs):
             self.model.train()
             print("[INFO][Trainer::train]")
-            print("\t start train mash occ itr", i + 1, "...")
+            print("\t start train occ itr", i + 1, "...")
             for batch in tqdm(self.train_loader):
                 loss, acc = self.train_step(batch, opt)
                 lr = opt.state_dict()["param_groups"][0]["lr"]

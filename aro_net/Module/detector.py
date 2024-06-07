@@ -5,23 +5,10 @@ import numpy as np
 import open3d as o3d
 from typing import Union
 
-from aro_net.Config.config import ARO_CONFIG, MASH_CONFIG
+from aro_net.Config.config import ARO_CONFIG
 from aro_net.Model.aro import ARONet
-from aro_net.Model.mash import MashNet
 from aro_net.Method.sample import sampleQueryPoints
-from aro_net.Module.Generator3D.aro import Generator3D
-
-mode = "mash"
-
-match mode:
-    case "aro":
-        CONFIG = ARO_CONFIG
-        NET = ARONet
-    case "mash":
-        CONFIG = MASH_CONFIG
-        NET = MashNet
-    case _:
-        exit()
+from aro_net.Module.generator_3d import Generator3D
 
 
 class Detector(object):
@@ -36,9 +23,9 @@ class Detector(object):
             "../aro-net/aro_net/Data/anchors/sphere" + str(self.n_anc) + ".npy"
         )
         self.anc_np = np.concatenate([self.anc_0[i::3] / (2**i) for i in range(3)])
-        self.anc = torch.from_numpy(self.anc_np).unsqueeze(0).to(CONFIG.device)
+        self.anc = torch.from_numpy(self.anc_np).unsqueeze(0).to(ARO_CONFIG.device)
 
-        self.model = NET()
+        self.model = ARONet()
 
         self.generator = Generator3D(self.model)
 
@@ -62,18 +49,32 @@ class Detector(object):
                 del state_dict[remove_key]
 
         self.model.load_state_dict(state_dict)
-        self.model.to(CONFIG.device)
+        self.model.to(ARO_CONFIG.device)
         self.model.eval()
         return True
 
     @torch.no_grad()
     def detect(self, points: np.ndarray) -> trimesh.Trimesh:
-        query_points = sampleQueryPoints(points, 512)
+        min_bound = np.min(points, axis=0)
+        max_bound = np.max(points, axis=0)
+        center = (min_bound + max_bound) / 2.0
+
+        scale = np.max(max_bound - min_bound)
+
+        trans_points = (points - center) / scale
+
+        query_points = sampleQueryPoints(trans_points, 512)
+
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(trans_points)
+
+        sample_pcd = pcd.farthest_point_down_sample(1024)
+        sample_points = np.asarray(sample_pcd.points).astype(np.float32)
 
         # FIXME: qry is unused for current inference
         data = {
-            "pcd": torch.from_numpy(points).unsqueeze(0).to(CONFIG.device),
-            "qry": torch.from_numpy(query_points).unsqueeze(0).to(CONFIG.device),
+            "pcd": torch.from_numpy(sample_points).unsqueeze(0).to(ARO_CONFIG.device),
+            "qry": torch.from_numpy(query_points).unsqueeze(0).to(ARO_CONFIG.device),
             "anc": self.anc,
         }
 
@@ -83,6 +84,8 @@ class Detector(object):
             mesh = out
         else:
             mesh = out[0]
+
+        mesh.vertices = mesh.vertices * scale + center
 
         return mesh
 

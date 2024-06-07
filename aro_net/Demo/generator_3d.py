@@ -6,7 +6,7 @@ from tqdm import tqdm
 from aro_net.Config.config import ARO_CONFIG
 from aro_net.Model.aro import ARONet
 from aro_net.Dataset.aro import ARONetDataset
-from aro_net.Module.Generator3D.aro import Generator3D
+from aro_net.Module.generator_3d import Generator3D
 
 
 def demo():

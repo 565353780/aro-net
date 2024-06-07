@@ -4,7 +4,7 @@ import gradio as gr
 import open3d as o3d
 
 from aro_net.Method.render import toPlotFigure
-from aro_net.Module.Detector.aro import Detector
+from aro_net.Module.detector import Detector
 
 model_file_path = "./output/4_7080.ckpt"
 detector = Detector(model_file_path)
@@ -23,7 +23,7 @@ def toAROMesh(
 ):
     print("input_pcd_file_path:", input_pcd_file_path)
     if not os.path.exists(input_pcd_file_path):
-        print("[ERROR][Server::fitBSplineSurface]")
+        print("[ERROR][gradio_server::toAROMesh]")
         print("\t input pcd file not exist!")
         print("\t input_pcd_file_path:", input_pcd_file_path)
         return ""
@@ -41,11 +41,9 @@ def toAROMesh(
     return save_pcd_file_path
 
 
-class Server(object):
+class GradioServer(object):
     def __init__(self, port: int) -> None:
         self.port = port
-
-        self.input_data = None
         return
 
     def start(self) -> bool:
