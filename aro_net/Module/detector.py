@@ -5,6 +5,7 @@ import numpy as np
 import open3d as o3d
 from typing import Union
 
+from aro_net.Config.constant import EPSILON
 from aro_net.Config.config import ARO_CONFIG
 from aro_net.Model.aro import ARONet
 from aro_net.Method.sample import sampleQueryPoints
@@ -31,6 +32,9 @@ class Detector(object):
 
         if model_file_path is not None:
             self.loadModel(model_file_path)
+
+        self.recon_vertices_list = []
+        self.recon_faces_list = []
         return
 
     def loadModel(self, model_file_path: str) -> bool:
@@ -59,7 +63,7 @@ class Detector(object):
         max_bound = np.max(points, axis=0)
         center = (min_bound + max_bound) / 2.0
 
-        scale = np.max(max_bound - min_bound)
+        scale = max(np.max(max_bound - min_bound), EPSILON)
 
         trans_points = (points - center) / scale
 
@@ -68,7 +72,8 @@ class Detector(object):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(trans_points)
 
-        sample_pcd = pcd.farthest_point_down_sample(1024)
+        sample_point_num = min(trans_points.shape[0], 1024)
+        sample_pcd = pcd.farthest_point_down_sample(sample_point_num)
         sample_points = np.asarray(sample_pcd.points).astype(np.float32)
 
         # FIXME: qry is unused for current inference
@@ -88,6 +93,28 @@ class Detector(object):
         mesh.vertices = mesh.vertices * scale + center
 
         return mesh
+
+    def detectPointsList(self, points: list) -> bool:
+        self.recon_vertices_list = []
+        self.recon_faces_list = []
+
+        points_array = np.array(points)
+
+        is_flatten = len(points_array.shape) == 1
+        if is_flatten:
+            points_array = points_array.reshape(-1, 3)
+
+        mesh = self.detect(points_array)
+
+        self.recon_vertices_list = mesh.vertices.reshape(-1).tolist()
+        self.recon_faces_list = mesh.faces.reshape(-1).tolist()
+        return True
+
+    def getVerticesList(self) -> list:
+        return self.recon_vertices_list
+
+    def getFacesList(self) -> list:
+        return self.recon_faces_list
 
     @torch.no_grad()
     def detectFile(self, pcd_file_path: str) -> Union[trimesh.Trimesh, None]:

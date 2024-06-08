@@ -29,7 +29,7 @@ class Config(object):
         self.weight_decay = 0.5
         # Marching Cube realted
         self.mc_chunk_size = 3000
-        self.mc_res0 = 64
+        self.mc_res0 = 16
         self.mc_up_steps = 2
         self.mc_threshold = 0.5
 
