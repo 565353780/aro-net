@@ -3,7 +3,7 @@ import numpy as np
 from tqdm import tqdm
 from time import sleep
 
-from aro_net.Module.Detector.aro import Detector
+from aro_net.Module.detector import Detector
 
 
 def demo():
