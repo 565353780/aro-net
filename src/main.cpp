@@ -3,6 +3,8 @@
 
 int main() {
   // super params
+  const std::string anchor_file_path =
+      "/home/chli/github/AMCAX/aro-net/data/anchors/anc_48.npy";
   const std::string model_file_path =
       "/home/chli/github/AMCAX/aro-net/output/aronet_cpp.pt";
 
@@ -16,7 +18,12 @@ int main() {
   }
 
   // construct detector module
-  Detector detector(model_file_path);
+  Detector detector(anchor_file_path, model_file_path);
+
+  if (!detector.isValid()) {
+    std::cout << "init detector failed!" << std::endl;
+    return -1;
+  }
 
   /*
   // reconstruct mesh from input point cloud
@@ -33,6 +40,9 @@ int main() {
   std::cout << "vertices num: " << int(vertices.size() / 3) << std::endl;
   std::cout << "faces num: " << int(faces.size() / 3) << std::endl;
   */
+
+  // clear loaded model
+  detector.clear();
 
   return 1;
 }

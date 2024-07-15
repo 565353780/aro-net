@@ -173,6 +173,3 @@ ssl
 logs
 output
 *.ckpt
-
-# downloads
-/data
