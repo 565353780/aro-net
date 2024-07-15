@@ -24,29 +24,28 @@ class SimplePointnet(nn.Module):
         self.fc_c = nn.Linear(hidden_dim, c_dim)
         self.reduce = reduce
         self.actvn = nn.ReLU()
-        self.pool = maxpool
 
-    def forward(self, p):
+    def forward(self, p: torch.Tensor):
         # batch_size, T, D = p.size()
 
         # output size: B x T X F
         net = self.fc_pos(p)
         net = self.fc_0(self.actvn(net))
-        pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=1, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=2)
 
         net = self.fc_1(self.actvn(net))
-        pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=1, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=2)
 
         net = self.fc_2(self.actvn(net))
-        pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=1, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=2)
 
         net = self.fc_3(self.actvn(net))
         if self.reduce:
             # Recude to  B x F
-            net = self.pool(net, dim=1)
+            net = maxpool(net, dim=1)
 
             c = self.fc_c(self.actvn(net))
         else:

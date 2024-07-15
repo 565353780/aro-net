@@ -22,9 +22,9 @@ class PositionalEncoding1D(nn.Module):
         self.channels = channels
         inv_freq = 1.0 / (10000 ** (torch.arange(0, channels, 2).float() / channels))
         self.register_buffer("inv_freq", inv_freq)
-        self.cached_penc = None
+        self.cached_penc = torch.empty(0)
 
-    def forward(self, tensor):
+    def forward(self, tensor: torch.Tensor):
         """
         :param tensor: A 3d tensor of size (batch_size, x, ch)
         :return: Positional Encoding Matrix of size (batch_size, x, ch)
@@ -32,10 +32,10 @@ class PositionalEncoding1D(nn.Module):
         if len(tensor.shape) != 3:
             raise RuntimeError("The input tensor has to be 3d!")
 
-        if self.cached_penc is not None and self.cached_penc.shape == tensor.shape:
+        if self.cached_penc.shape == tensor.shape:
             return self.cached_penc
 
-        self.cached_penc = None
+        self.cached_penc = torch.empty(0)
         batch_size, x, orig_ch = tensor.shape
         pos_x = torch.arange(x, device=tensor.device).type(self.inv_freq.type())
         sin_inp_x = torch.einsum("i,j->ij", pos_x, self.inv_freq)

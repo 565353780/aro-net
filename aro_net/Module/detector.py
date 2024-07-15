@@ -44,7 +44,7 @@ class Detector(object):
             print("\t model_file_path:", model_file_path)
             return False
 
-        state_dict = torch.load(model_file_path)["model"]
+        state_dict = torch.load(model_file_path, map_location='cpu')["model"]
 
         # FIXME: an extra unused layer values occured
         remove_key_list = ["fc_dist_hit.0.weight", "fc_dist_hit.0.bias"]
@@ -67,7 +67,9 @@ class Detector(object):
 
         trans_points = (points - center) / scale
 
-        query_points = sampleQueryPoints(trans_points, 512)
+        query_point_num = int(min(512, points.shape[0]))
+
+        query_points = sampleQueryPoints(trans_points, query_point_num)
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(trans_points)

@@ -98,7 +98,7 @@ class Generator3D(object):
                 else:
                     data_chunk[key] = data[key]
 
-            occ = self.model(data_chunk)
+            occ = self.model.forward_dict(data_chunk)
             ret.append(occ)
 
         ret = torch.cat(ret, -1)
