@@ -3,7 +3,6 @@
 
 int main() {
   // super params
-  const std::string root_path = "../../aro-net/";
   const std::string model_file_path = "../aro-net/output/4_7080.ckpt";
 
   // input point cloud [x1, y1, z1, x2, y2, z2, ...]
@@ -16,8 +15,9 @@ int main() {
   }
 
   // construct detector module
-  Detector detector(root_path, model_file_path);
+  Detector detector(model_file_path);
 
+  /*
   // reconstruct mesh from input point cloud
   const bool success = detector.reconMesh(points);
   if (!success) {
@@ -31,6 +31,7 @@ int main() {
 
   std::cout << "vertices num: " << int(vertices.size() / 3) << std::endl;
   std::cout << "faces num: " << int(faces.size() / 3) << std::endl;
+  */
 
   return 1;
 }
