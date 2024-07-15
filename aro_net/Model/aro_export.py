@@ -4,7 +4,6 @@ import torch.nn as nn
 from math import cos
 
 from aro_net.Config.config import ARO_CONFIG
-from aro_net.Model.positional_encoding_1d import PositionalEncoding1D
 from aro_net.Model.PointNet.resnet import ResnetPointnet
 
 
@@ -50,23 +49,23 @@ class ARONet(nn.Module):
         top_k = self.n_local
         th = np.pi / (self.cone_angle_th)
 
-        vec_anc2qry = qry[:, None, :, :] - anc[:, :, None, :]
-        mod_anc2qry = torch.linalg.norm(vec_anc2qry, dim=-1)[:, :, :, None]
+        vec_anc2qry = qry.unsqueeze(1) - anc.unsqueeze(2)
+        mod_anc2qry = torch.linalg.norm(vec_anc2qry, dim=-1).unsqueeze(-1)
         norm_anc2qry = vec_anc2qry / mod_anc2qry
         ray_anc2qry = torch.cat(
-            [anc[:, :, None, :].expand(-1, -1, self.n_qry, -1), norm_anc2qry], -1
+            [anc.unsqueeze(2).expand(-1, -1, self.n_qry, -1), norm_anc2qry], -1
         )
 
         hit_all = []
-        pcd_tile = pcd[:, None, :, :].expand(-1, self.n_qry, -1, -1)
+        pcd_tile = pcd.unsqueeze(1).expand(-1, self.n_qry, -1, -1)
         for idx_anc in range(self.n_anc):
             # first calculate the angle between anc2qry and anc2pts
             ray_anc2qry_ = ray_anc2qry[:, idx_anc, :, :]#torch.Size([1, 729, 6])
-            vec_anc2pts_ = pcd[:, None, :, :] - ray_anc2qry_[:, :, None, :3]# torch.Size([1, 729, 676029, 3])
+            vec_anc2pts_ = pcd.unsqueeze(1) - ray_anc2qry_[:, :, :3].unsqueeze(2)# torch.Size([1, 729, 676029, 3])
             # print(ray_anc2qry_.shape[1],'\n',vec_anc2pts_.shape[2])
             mod_anc2pts_ = torch.linalg.norm(vec_anc2pts_, dim=-1)
-            norm_anc2pts_ = vec_anc2pts_ / mod_anc2pts_[:, :, :, None]
-            norm_anc2qry_ = ray_anc2qry_[:, :, None, 3:]
+            norm_anc2pts_ = vec_anc2pts_ / mod_anc2pts_.unsqueeze(-1)
+            norm_anc2qry_ = ray_anc2qry_[:, :, 3:].unsqueeze(2)
             cos_value = (norm_anc2qry_ * norm_anc2pts_).sum(-1)
             # filter out those points are not in the cone
             flt_angle = cos_value <= cos(th)
@@ -74,7 +73,7 @@ class ARONet(nn.Module):
             tmp = torch.topk(mod_anc2pts_, top_k, dim=-1, largest=False)
             idx_topk, vl_topk = tmp.indices, tmp.values
             hit_raw = torch.gather(
-                pcd_tile, 2, idx_topk[:, :, :, None].expand(-1, -1, -1, 3)
+                pcd_tile, 2, idx_topk.unsqueeze(-1).expand(-1, -1, -1, 3)
             )
             flt_pts = (vl_topk == torch.inf).float()
 
@@ -100,12 +99,12 @@ class ARONet(nn.Module):
         feat_qry2hit: [n_bs, n_qry, n_anc, n_local, 4]
         """
 
-        vec_anc2qry = qry[:, :, None, :] - anc[:, None, :, :]
-        mod_anc2qry = torch.linalg.norm(vec_anc2qry, dim=-1)[..., None]
+        vec_anc2qry = qry.unsqueeze(2) - anc.unsqueeze(1)
+        mod_anc2qry = torch.linalg.norm(vec_anc2qry, dim=-1).unsqueeze(-1)
         norm_anc2qry = torch.div(vec_anc2qry, mod_anc2qry.expand(-1, -1, -1, 3))
         feat_anc2qry = torch.cat([norm_anc2qry, mod_anc2qry], -1)
         vec_qry2hit = hit - qry.view(-1, self.n_qry, 1, 1, 3)
-        mod_qry2hit = torch.linalg.norm(vec_qry2hit, dim=-1)[..., None]
+        mod_qry2hit = torch.linalg.norm(vec_qry2hit, dim=-1).unsqueeze(-1)
         mask_padded = (mod_qry2hit.expand(-1, -1, -1, -1, 3) == 0).float()
         mod_qry2hit_ = (
             mod_qry2hit * (1 - mask_padded) + 1.0 * mask_padded

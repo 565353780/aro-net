@@ -7,6 +7,7 @@ int main() {
       "/home/chli/github/AMCAX/aro-net/data/anchors/anc_48.npy";
   const std::string model_file_path =
       "/home/chli/github/AMCAX/aro-net/output/aronet_cpp.pt";
+  const int resolution = 64;
 
   // input point cloud [x1, y1, z1, x2, y2, z2, ...]
   std::vector<float> points;
@@ -25,14 +26,14 @@ int main() {
     return -1;
   }
 
-  /*
   // reconstruct mesh from input point cloud
-  const bool success = detector.reconMesh(points);
+  const bool success = detector.detect(points, resolution);
   if (!success) {
-    std::cout << "reconMesh failed!" << std::endl;
+    std::cout << "detect failed!" << std::endl;
     return -1;
   }
 
+  /*
   // get reconstructed mesh data
   const std::vector<float> vertices = detector.getVertices();
   const std::vector<float> faces = detector.getFaces();
