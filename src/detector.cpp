@@ -1,14 +1,16 @@
-#include "grid.h"
-#include <ATen/ops/from_blob.h>
-#include <torch/types.h>
 #define MC_IMPLEM_ENABLE
-#include "MC.h"
-#include "cnpy.h"
 #include "detector.h"
+#include "cnpy.h"
+#include "grid.h"
+#include "io.h"
 #include "transform.h"
+#include <ATen/ops/from_blob.h>
 #include <filesystem>
 #include <memory>
+#include <open3d/Open3D.h>
+#include <open3d/io/TriangleMeshIO.h>
 #include <torch/script.h>
+#include <torch/types.h>
 
 using namespace torch::indexing;
 
@@ -33,6 +35,10 @@ Detector::Detector(const std::string &anchor_file_path,
 
 const bool Detector::clear() {
   model_.reset();
+
+  mesh_.vertices.clear();
+  mesh_.normals.clear();
+  mesh_.indices.clear();
 
   return true;
 }
@@ -90,7 +96,11 @@ const bool Detector::loadModel(const std::string &model_file_path) {
 }
 
 const bool Detector::detect(const std::vector<float> &points,
-                            const int &resolution) {
+                            const int &resolution, const int &log_freq) {
+  mesh_.vertices.clear();
+  mesh_.normals.clear();
+  mesh_.indices.clear();
+
   const float threshold = std::log(threshold_) - std::log(1.0 - threshold_);
 
   const float box_size = 1.0f + padding_;
@@ -111,14 +121,59 @@ const bool Detector::detect(const std::vector<float> &points,
 
   const torch::Tensor trans_pcd = ((pcd - translate) / scale).unsqueeze(0);
 
-  const torch::Tensor values = eval_points(trans_pcd, qry, anc_);
+  const torch::Tensor values = eval_points(trans_pcd, qry, anc_, log_freq);
+
+  const torch::Tensor value_grid =
+      values.reshape({resolution, resolution, resolution});
+
+  torch::Tensor occ_hat_padded = torch::nn::functional::pad(
+      value_grid, torch::nn::functional::PadFuncOptions({1, 1, 1, 1, 1, 1})
+                      .mode(torch::kConstant)
+                      .value(-1e6));
+
+  MC::MC_FLOAT *field = values.data_ptr<float>();
+
+  MC::marching_cube(field, resolution + 2, resolution + 2, resolution + 2,
+                    mesh_);
 
   return true;
 }
 
+const bool Detector::toMeshFile(const std::string &save_mesh_file_path) {
+  if (!saveMeshFile(mesh_, save_mesh_file_path)) {
+    std::cout << "[ERROR][Detector::toMeshFile]" << std::endl;
+    std::cout << "\t saveMeshFile failed!" << std::endl;
+
+    return false;
+  }
+
+  return true;
+}
+
+const std::vector<float> Detector::getMeshVertices() {
+  std::vector<float> recon_vertices(mesh_.vertices.size() * 3);
+  for (int i = 0; i < mesh_.vertices.size(); ++i) {
+    recon_vertices[3 * i] = mesh_.vertices[i].x;
+    recon_vertices[3 * i + 1] = mesh_.vertices[i].y;
+    recon_vertices[3 * i + 2] = mesh_.vertices[i].z;
+  }
+
+  return recon_vertices;
+}
+
+const std::vector<int> Detector::getMeshFaces() {
+  std::vector<int> recon_faces(mesh_.indices.size());
+  for (int i = 0; i < mesh_.indices.size(); ++i) {
+    recon_faces[i] = mesh_.indices[i];
+  }
+
+  return recon_faces;
+}
+
 const torch::Tensor Detector::eval_points(const torch::Tensor &pcd,
                                           const torch::Tensor &qry,
-                                          const torch::Tensor &anc) {
+                                          const torch::Tensor &anc,
+                                          const int &log_freq) {
   torch::NoGradGuard no_grad;
 
   const int n_qry = qry.size(1);
@@ -134,6 +189,8 @@ const torch::Tensor Detector::eval_points(const torch::Tensor &pcd,
   inputs[0] = pcd;
   inputs[2] = anc;
 
+  std::cout << "[INFO][Detector::eval_points]" << std::endl;
+  std::cout << "\t start predict occ field..." << std::endl;
   for (int i = 0; i < n_chunk; ++i) {
     torch::Tensor qry_chunk;
     if (i < n_chunk - 1) {
@@ -147,11 +204,16 @@ const torch::Tensor Detector::eval_points(const torch::Tensor &pcd,
 
     const torch::Tensor occ = model_->forward(inputs).toTensor();
 
-    std::cout << occ.index({0, Slice(None, 10)}) << std::endl;
-    std::cout << occ.sizes() << std::endl;
+    ret.emplace_back(occ);
 
-    exit(0);
+    if (i % log_freq == 0) {
+      std::cout << "\r [INFO][Detector::eval_points] occ predict: " << i + 1
+                << " / " << n_chunk << "...    ";
+    }
   }
+  std::cout << std::endl;
 
-  return ret[0];
+  const torch::Tensor result = torch::cat(ret, -1).squeeze(0);
+
+  return result;
 }

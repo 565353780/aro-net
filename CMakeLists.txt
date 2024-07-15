@@ -6,6 +6,13 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(D_GLIBCXX_USE_CXX11_ABI 0)
 
+find_package(Open3D REQUIRED)
+if (Open3D_FOUND)
+  message(STATUS "Found Open3D ${Open3D_VERSION}")
+  link_directories(${Open3D_LIBRARY_DIRS})
+  include_directories(${Open3D_INCLUDE_DIRS})
+endif()
+
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
@@ -28,6 +35,9 @@ add_executable(${PROJECT_NAME} ./src/main.cpp ${SRC} ${CNPY_SRC})
 
 find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
 
+target_link_libraries(${PROJECT_NAME} PRIVATE Open3D::Open3D)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PRIVATE pybind11::embed)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE ${ZLIB_LIBRARIES})

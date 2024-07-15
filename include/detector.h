@@ -1,5 +1,6 @@
 #pragma once
 
+#include <MC.h>
 #include <torch/extension.h>
 
 class Detector {
@@ -17,12 +18,19 @@ public:
 
   const bool loadModel(const std::string &model_file_path);
 
-  const bool detect(const std::vector<float> &points, const int &resolution);
+  const bool detect(const std::vector<float> &points, const int &resolution,
+                    const int &log_freq = 1);
+
+  const bool toMeshFile(const std::string &save_mesh_file_path);
+
+  const std::vector<float> getMeshVertices();
+  const std::vector<int> getMeshFaces();
 
 private:
   const torch::Tensor eval_points(const torch::Tensor &pcd,
                                   const torch::Tensor &qry,
-                                  const torch::Tensor &anc);
+                                  const torch::Tensor &anc,
+                                  const int &log_freq = 1);
 
 private:
   float padding_ = 0.1;
@@ -36,4 +44,6 @@ private:
       torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
 
   std::shared_ptr<torch::jit::script::Module> model_ = nullptr;
+
+  MC::mcMesh mesh_;
 };
