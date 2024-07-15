@@ -15,5 +15,5 @@ public:
 private:
   bool model_loaded_ = false;
 
-  torch::nn::Module model_;
+  std::shared_ptr<torch::jit::script::Module> model_;
 };

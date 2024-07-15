@@ -3,7 +3,8 @@
 
 int main() {
   // super params
-  const std::string model_file_path = "../aro-net/output/4_7080.ckpt";
+  const std::string model_file_path =
+      "/home/chli/github/AMCAX/aro-net/output/aronet_cpp.pt";
 
   // input point cloud [x1, y1, z1, x2, y2, z2, ...]
   std::vector<float> points;
