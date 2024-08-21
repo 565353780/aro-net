@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 set(CMAKE_CXX_FLAGS "-std=c++17 -O0")
 project(ARONet)
 
+set(Open3D_ROOT ../../open3d-manage/3rd/open3d-devel-linux/)
+
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(D_GLIBCXX_USE_CXX11_ABI 0)
