@@ -31,6 +31,8 @@ include_directories(./3rd/cnpy)
 include_directories(./include)
 
 file(GLOB_RECURSE SRC ./src/*.cpp)
+list(FILTER SRC EXCLUDE REGEX "main.cpp")
+
 set(CNPY_SRC ./3rd/cnpy/cnpy.cpp)
 
 add_executable(${PROJECT_NAME} ./src/main.cpp ${SRC} ${CNPY_SRC})
