@@ -21,7 +21,7 @@ public:
   const bool detect(const std::vector<float> &points, const int &resolution,
                     const int &log_freq = 1);
 
-  const bool toMeshFile(const std::string &save_mesh_file_path);
+  const bool toMeshFile(const std::string &save_mesh_file_path, const bool &overwrite = false);
 
   const bool detectAndSaveAsMeshFile(const std::vector<float> &points, const int &resolution,
       const std::string &save_mesh_file_path, const int &log_freq = 1, const bool &overwrite = false);

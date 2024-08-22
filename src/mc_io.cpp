@@ -2,7 +2,16 @@
 #include <filesystem>
 
 const bool saveMeshFile(const MC::mcMesh &mesh,
-                        const std::string &save_mesh_file_path) {
+                        const std::string &save_mesh_file_path,
+                        const bool &overwrite){
+  if (std::filesystem::exists(save_mesh_file_path)){
+    if (!overwrite){
+      return true;
+    }
+
+    std::filesystem::remove(save_mesh_file_path);
+  }
+
   open3d::geometry::TriangleMesh o3d_mesh;
 
   o3d_mesh.vertices_.resize(mesh.vertices.size());
@@ -25,14 +34,9 @@ const bool saveMeshFile(const MC::mcMesh &mesh,
         mesh.indices[3 * i], mesh.indices[3 * i + 1], mesh.indices[3 * i + 2]);
   }
 
-  size_t pos = save_mesh_file_path.rfind("/");
-  if (pos != std::string::npos) {
-    const std::string save_mesh_folder_path =
-        save_mesh_file_path.substr(0, pos) + "/";
-
-    if (!std::filesystem::exists(save_mesh_folder_path)) {
-      std::filesystem::create_directories(save_mesh_folder_path);
-    }
+  const std::string save_mesh_folder_path = std::filesystem::path(save_mesh_file_path).parent_path();
+  if (!std::filesystem::exists(save_mesh_folder_path)) {
+    std::filesystem::create_directories(save_mesh_folder_path);
   }
 
   open3d::io::WriteTriangleMesh(save_mesh_file_path, o3d_mesh);

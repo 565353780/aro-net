@@ -155,8 +155,8 @@ const bool Detector::detect(const std::vector<float> &points,
   return true;
 }
 
-const bool Detector::toMeshFile(const std::string &save_mesh_file_path) {
-  if (!saveMeshFile(mesh_, save_mesh_file_path)) {
+const bool Detector::toMeshFile(const std::string &save_mesh_file_path, const bool &overwrite) {
+  if (!saveMeshFile(mesh_, save_mesh_file_path, overwrite)) {
     std::cout << "[ERROR][Detector::toMeshFile]" << std::endl;
     std::cout << "\t saveMeshFile failed!" << std::endl;
 
@@ -182,7 +182,7 @@ const bool Detector::detectAndSaveAsMeshFile(const std::vector<float> &points, c
     return false;
   }
 
-  if (!toMeshFile(save_mesh_file_path)){
+  if (!toMeshFile(save_mesh_file_path, overwrite)){
     std::cout << "[ERROR][Detector::detectAndSaveAsMeshFile]" << std::endl;
     std::cout << "\t toMeshFile failed!" << std::endl;
     return false;
