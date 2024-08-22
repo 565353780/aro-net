@@ -46,6 +46,9 @@ private:
   torch::TensorOptions opts_ =
       torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
   bool use_gpu_ = false;
+  std::vector<float> translate_{0.0, 0.0, 0.0};
+  float scale_ = 1.0;
+  int resolution_ = 0;
 
   std::shared_ptr<torch::jit::script::Module> model_ = nullptr;
 

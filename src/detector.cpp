@@ -132,6 +132,11 @@ const bool Detector::detect(const std::vector<float> &points,
   torch::Tensor translate;
   float scale;
   normalizePoints(pcd, translate, scale);
+  translate_[0] = translate[0].item<float>();
+  translate_[1] = translate[1].item<float>();
+  translate_[2] = translate[2].item<float>();
+  scale_ = scale;
+  resolution_ = resolution;
 
   const torch::Tensor trans_pcd = ((pcd - translate) / scale).unsqueeze(0);
 
@@ -156,7 +161,7 @@ const bool Detector::detect(const std::vector<float> &points,
 }
 
 const bool Detector::toMeshFile(const std::string &save_mesh_file_path, const bool &overwrite) {
-  if (!saveMeshFile(mesh_, save_mesh_file_path, overwrite)) {
+  if (!saveMeshFile(mesh_, save_mesh_file_path, translate_, scale_, resolution_, overwrite)) {
     std::cout << "[ERROR][Detector::toMeshFile]" << std::endl;
     std::cout << "\t saveMeshFile failed!" << std::endl;
 
