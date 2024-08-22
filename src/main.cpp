@@ -10,6 +10,7 @@ int main() {
   const bool use_gpu = true;
   const int resolution = 32;
   const std::string save_mesh_file_path = "./output/recon_aro.ply";
+  const int log_freq = 1;
   const bool overwrite = false;
 
   // input point cloud [x1, y1, z1, x2, y2, z2, ...]
@@ -30,7 +31,7 @@ int main() {
   }
 
   // reconstruct mesh from input point cloud
-  const bool success = detector.detectAndSaveAsMeshFile(points, resolution, save_mesh_file_path, overwrite);
+  const bool success = detector.detectAndSaveAsMeshFile(points, resolution, save_mesh_file_path, log_freq, overwrite);
   if (!success) {
     std::cout << "detectAndSaveAsMeshFile failed!" << std::endl;
     return -1;
