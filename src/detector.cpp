@@ -2,7 +2,7 @@
 #include "detector.h"
 #include "cnpy.h"
 #include "grid.h"
-#include "io.h"
+#include "mc_io.h"
 #include "transform.h"
 #include <ATen/ops/from_blob.h>
 #include <filesystem>
