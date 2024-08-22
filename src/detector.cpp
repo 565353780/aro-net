@@ -17,10 +17,11 @@ using namespace torch::indexing;
 Detector::Detector(const std::string &anchor_file_path,
                    const std::string &model_file_path, const bool &use_gpu) {
   if (use_gpu) {
-    opts_ = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA);
+    opts_ = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
   } else {
     opts_ = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
   }
+  use_gpu_ = use_gpu;
 
   if (!loadAnchors(anchor_file_path)) {
     std::cout << "[ERROR][Detector::Detector]" << std::endl;
@@ -74,6 +75,9 @@ const bool Detector::loadAnchors(const std::string &anchor_file_path) {
              .reshape({1, long(arr.shape[0]), long(arr.shape[1])})
              .detach()
              .clone();
+  if (use_gpu_){
+    anc_ = anc_.cuda();
+  }
 
   anchor_loaded_ = true;
   return true;
@@ -91,6 +95,10 @@ const bool Detector::loadModel(const std::string &model_file_path) {
 
   model_ = std::make_shared<torch::jit::script::Module>(
       torch::jit::load(model_file_path));
+  if (use_gpu_){
+    model_->to(torch::kCUDA);
+  }
+  model_->eval();
 
   return true;
 }
@@ -109,11 +117,17 @@ const bool Detector::detect(const std::vector<float> &points,
       box_size * make_3d_grid({-0.5, -0.5, -0.5}, {0.5, 0.5, 0.5},
                               {resolution, resolution, resolution});
 
-  const torch::Tensor qry = pointsf.unsqueeze(0).to(opts_);
+  torch::Tensor qry = pointsf.unsqueeze(0).to(opts_);
+  if (use_gpu_){
+    qry = qry.cuda();
+  }
 
   torch::Tensor pcd =
       torch::from_blob((void *)(points).data(), {long(points.size())}, opts_)
           .reshape({-1, 3});
+  if (use_gpu_){
+    pcd = pcd.cuda();
+  }
 
   torch::Tensor translate;
   float scale;
@@ -131,7 +145,9 @@ const bool Detector::detect(const std::vector<float> &points,
                       .mode(torch::kConstant)
                       .value(-1e6));
 
-  MC::MC_FLOAT *field = values.data_ptr<float>();
+  const torch::Tensor safe_occ_hat_padded = occ_hat_padded.reshape({-1}).detach().clone().cpu();
+
+  MC::MC_FLOAT *field = safe_occ_hat_padded.data_ptr<float>();
 
   MC::marching_cube(field, resolution + 2, resolution + 2, resolution + 2,
                     mesh_);
@@ -144,6 +160,31 @@ const bool Detector::toMeshFile(const std::string &save_mesh_file_path) {
     std::cout << "[ERROR][Detector::toMeshFile]" << std::endl;
     std::cout << "\t saveMeshFile failed!" << std::endl;
 
+    return false;
+  }
+
+  return true;
+}
+
+const bool Detector::detectAndSaveAsMeshFile(const std::vector<float> &points, const int &resolution,
+      const std::string &save_mesh_file_path, const int &log_freq, const bool &overwrite){
+  if (std::filesystem::exists(save_mesh_file_path)){
+    if (!overwrite){
+      return true;
+    }
+
+    std::filesystem::remove(save_mesh_file_path);
+  }
+
+  if (!detect(points, resolution, log_freq)){
+    std::cout << "[ERROR][Detector::detectAndSaveAsMeshFile]" << std::endl;
+    std::cout << "\t detect failed!" << std::endl;
+    return false;
+  }
+
+  if (!toMeshFile(save_mesh_file_path)){
+    std::cout << "[ERROR][Detector::detectAndSaveAsMeshFile]" << std::endl;
+    std::cout << "\t toMeshFile failed!" << std::endl;
     return false;
   }
 
@@ -178,7 +219,13 @@ const torch::Tensor Detector::eval_points(const torch::Tensor &pcd,
 
   const int n_qry = qry.size(1);
 
-  int chunk_size = int(chunk_size_ * 0.1);
+  int chunk_size;
+  if (use_gpu_){
+    chunk_size = chunk_size_;
+  }
+  else{
+    chunk_size = int(chunk_size_ * 0.1);
+  }
 
   const int n_chunk = std::ceil(n_qry / chunk_size);
 

@@ -4,11 +4,13 @@
 int main() {
   // super params
   const std::string anchor_file_path =
-      "/home/chli/github/AMCAX/aro-net/data/anchors/anc_48.npy";
+      "/home/chli/github/AMCAX/point-cloud-reverse-algorithm/aro-net/data/anchors/anc_48.npy";
   const std::string model_file_path =
-      "/home/chli/github/AMCAX/aro-net/output/aronet_cpp.pt";
-  const int resolution = 8;
+      "/home/chli/github/AMCAX/point-cloud-reverse-algorithm/aro-net/output/aronet_cpp.pt";
+  const bool use_gpu = true;
+  const int resolution = 32;
   const std::string save_mesh_file_path = "./output/recon_aro.ply";
+  const bool overwrite = false;
 
   // input point cloud [x1, y1, z1, x2, y2, z2, ...]
   std::vector<float> points;
@@ -20,7 +22,7 @@ int main() {
   }
 
   // construct detector module
-  Detector detector(anchor_file_path, model_file_path);
+  Detector detector(anchor_file_path, model_file_path, use_gpu);
 
   if (!detector.isValid()) {
     std::cout << "init detector failed!" << std::endl;
@@ -28,9 +30,9 @@ int main() {
   }
 
   // reconstruct mesh from input point cloud
-  const bool detect_success = detector.detect(points, resolution);
-  if (!detect_success) {
-    std::cout << "detect failed!" << std::endl;
+  const bool success = detector.detectAndSaveAsMeshFile(points, resolution, save_mesh_file_path, overwrite);
+  if (!success) {
+    std::cout << "detectAndSaveAsMeshFile failed!" << std::endl;
     return -1;
   }
 
@@ -40,13 +42,6 @@ int main() {
 
   std::cout << "vertices num: " << int(vertices.size() / 3) << std::endl;
   std::cout << "faces num: " << int(faces.size() / 3) << std::endl;
-
-  // save as mesh file
-  const bool save_success = detector.toMeshFile(save_mesh_file_path);
-  if (!save_success) {
-    std::cout << "save as mesh failed!" << std::endl;
-    return -1;
-  }
 
   // clear loaded model
   detector.clear();

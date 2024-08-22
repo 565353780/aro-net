@@ -23,6 +23,9 @@ public:
 
   const bool toMeshFile(const std::string &save_mesh_file_path);
 
+  const bool detectAndSaveAsMeshFile(const std::vector<float> &points, const int &resolution,
+      const std::string &save_mesh_file_path, const int &log_freq = 1, const bool &overwrite = false);
+
   const std::vector<float> getMeshVertices();
   const std::vector<int> getMeshFaces();
 
@@ -42,6 +45,7 @@ private:
 
   torch::TensorOptions opts_ =
       torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
+  bool use_gpu_ = false;
 
   std::shared_ptr<torch::jit::script::Module> model_ = nullptr;
 
