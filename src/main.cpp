@@ -8,7 +8,7 @@ int main() {
   const std::string model_file_path =
       "/home/chli/github/AMCAX/point-cloud-reverse-algorithm/aro-net/output/aronet_cpp.pt";
   const bool use_gpu = true;
-  const int resolution = 32;
+  const int resolution = 64;
   const std::string save_mesh_file_path = "./output/recon_aro.ply";
   const int log_freq = 1;
   const bool overwrite = false;
