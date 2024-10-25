@@ -1,13 +1,14 @@
-pip install trimesh open3d tensorboard Cython pykdtree
-
 cd ..
 git clone https://github.com/kacperkan/light-field-distance
+
+pip install -U trimesh open3d tensorboard Cython pykdtree gradio
+
 cd light-field-distance
 python setup.py install
 
 cd ../aro-net
 
-pip install torch torchvision torchaudio
+pip install -U torch torchvision torchaudio
 
 python setup.py build_ext --inplace
 
