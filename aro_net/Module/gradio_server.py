@@ -48,7 +48,9 @@ class GradioServer(object):
 
     def start(self) -> bool:
         example_folder_path = "./output/input_pcd/"
-        example_file_name_list = os.listdir(example_folder_path)
+        example_file_name_list = []
+        if os.path.exists(example_folder_path):
+            example_file_name_list = os.listdir(example_folder_path)
 
         examples = [
             example_folder_path + example_file_name
