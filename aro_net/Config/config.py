@@ -20,7 +20,7 @@ class Config(object):
         self.cond_pn = False
         self.tfm_pos_enc = False
         # common hyper-parameters
-        self.device = "cuda"
+        self.device = "cuda:0"
         self.mode = "test"
         self.n_bs = 1
         self.n_epochs = 600
