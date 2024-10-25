@@ -40,8 +40,10 @@ class ResnetBlockFC(nn.Module):
         nn.init.zeros_(self.fc_1.weight)
         if self.use_bn:
             self.bn = nn.BatchNorm1d(self.n_anc * self.size_h)
+        else:
+            self.bn = nn.ModuleList()
 
-    def perform_bn(self, net, _=0):
+    def perform_bn(self, net):
         n_dim = net.shape[-1]
         net = (
             net.view(-1, self.n_anc, self.n_local, n_dim)
@@ -58,8 +60,9 @@ class ResnetBlockFC(nn.Module):
 
     def forward(self, x):
         net = self.fc_0(self.actvn(x))  # B * N * M, n_local, size_h
-        if self.use_bn:
-            net = self.perform_bn(net)
+        #FIXME: here can not be used by torch.jit.script
+        # if self.use_bn:
+        #     net = self.perform_bn(net)
         dx = self.fc_1(self.actvn(net))
         if self.shortcut is not None:
             x_s = self.shortcut(x)

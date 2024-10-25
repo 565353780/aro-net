@@ -87,7 +87,7 @@ class Trainer(object):
         for key in batch:
             batch[key] = batch[key].to(CONFIG.device)
         opt.zero_grad()
-        x = self.model(batch)
+        x = self.model.forward_dict(batch)
 
         loss = cal_loss_pred(x, batch)
 
@@ -111,7 +111,7 @@ class Trainer(object):
                     batch[key] = batch[key].to(CONFIG.device)
                 except:
                     pass
-            x = self.model(batch)
+            x = self.model.forward_dict(batch)
 
             loss_pred = cal_loss_pred(x, batch)
 

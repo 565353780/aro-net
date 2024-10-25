@@ -4,9 +4,7 @@ import torch.nn as nn
 from math import cos
 
 from aro_net.Config.config import ARO_CONFIG
-from aro_net.Model.positional_encoding_1d import PositionalEncoding1D
 from aro_net.Model.PointNet.resnet import ResnetPointnet
-from aro_net.Model.PointNet.resnet_cond_bn import ResnetPointnetCondBN
 
 
 class ARONet(nn.Module):
@@ -16,8 +14,6 @@ class ARONet(nn.Module):
         n_qry=ARO_CONFIG.n_qry,
         n_local=ARO_CONFIG.n_local,
         cone_angle_th=ARO_CONFIG.cone_angle_th,
-        tfm_pos_enc=ARO_CONFIG.tfm_pos_enc,
-        cond_pn=ARO_CONFIG.cond_pn,
         pn_use_bn=ARO_CONFIG.pn_use_bn,
     ):
         super().__init__()
@@ -25,32 +21,15 @@ class ARONet(nn.Module):
         self.n_local = n_local
         self.n_qry = n_qry
         self.cone_angle_th = cone_angle_th
-        self.cond_pn = cond_pn
-        if self.cond_pn:
-            self.point_net = ResnetPointnetCondBN(dim=4, reduce=True)
-        else:
-            self.point_net = ResnetPointnet(
-                dim=4, reduce=True, size_aux=(n_anc, n_local), use_bn=pn_use_bn
-            )
-        self.tfm_pos_enc = tfm_pos_enc
-        if self.cond_pn:
-            self.fc_cond_1 = nn.Sequential(
-                nn.Conv1d(3, 128, 1), nn.BatchNorm1d(128), nn.ReLU()
-            )
-            self.fc_cond_2 = nn.Sequential(
-                nn.Conv1d(128, 128, 1), nn.BatchNorm1d(128), nn.ReLU()
-            )
-        else:
-            self.fc_cond_1 = nn.ModuleList()
-            self.fc_cond_2 = nn.ModuleList()
+        self.point_net = ResnetPointnet(
+            dim=4, reduce=True, size_aux=(n_anc, n_local), use_bn=pn_use_bn
+        )
         self.fc_1 = nn.Sequential(
             nn.Conv1d(4 + 128, 128, 1), nn.BatchNorm1d(128), nn.ReLU()
         )
         self.fc_2 = nn.Sequential(
             nn.Conv1d(128, 128, 1), nn.BatchNorm1d(128), nn.ReLU()
         )
-        if self.tfm_pos_enc:
-            self.pos_enc = PositionalEncoding1D(128)
         self.att_layer = nn.TransformerEncoderLayer(
             d_model=128, nhead=8, batch_first=True
         )
@@ -150,17 +129,7 @@ class ARONet(nn.Module):
             n_bs * self.n_qry * self.n_anc, self.n_local, -1
         )
 
-        if self.cond_pn:
-            cond_anc = self.fc_cond_2(self.fc_cond_1(anc.permute(0, 2, 1)))
-            cond_anc = (
-                cond_anc.permute(0, 2, 1)
-                .unsqueeze(1)
-                .expand(-1, self.n_qry, -1, -1)
-                .reshape(n_bs * self.n_qry * self.n_anc, -1)
-            )
-            feat_local = self.point_net(feat_qry2hit_rs, cond_anc)
-        else:
-            feat_local = self.point_net(feat_qry2hit_rs)
+        feat_local = self.point_net(feat_qry2hit_rs)
 
         feat_local = feat_local.view(n_bs, self.n_qry, self.n_anc, -1)
 
@@ -175,10 +144,6 @@ class ARONet(nn.Module):
             0, 3, 2, 1
         )  # n_bs, -1, n_anc, n_qry
         x = x.reshape(n_bs * self.n_qry, self.n_anc, -1)
-
-        # apply positional encoding
-        if self.tfm_pos_enc:
-            x = x + self.pos_enc(x)
 
         x = self.att_decoder(x)
 

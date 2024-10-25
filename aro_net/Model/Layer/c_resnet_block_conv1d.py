@@ -1,5 +1,7 @@
 import torch.nn as nn
 
+from aro_net.Model.Layer.c_batch_norm_1d import CBatchNorm1d
+
 
 class CResnetBlockConv1d(nn.Module):
     """Conditional batch normalization-based Resnet block class.

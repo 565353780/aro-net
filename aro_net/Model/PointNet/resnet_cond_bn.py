@@ -58,34 +58,33 @@ class ResnetPointnetCondBN(nn.Module):
         self.fc_c = nn.Linear(hidden_dim, c_dim)
 
         self.actvn = nn.ReLU()
-        self.pool = maxpool
 
-    def forward(self, p, c):
+    def forward(self, p: torch.Tensor, c: torch.Tensor):
         # batch_size, T, D = p.size()
         p = p.permute(0, 2, 1)  # N, 4, N_point
 
         net = self.fc_pos(p)
         net = self.block_0(net, c)
 
-        pooled = self.pool(net, dim=2, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=2, keepdim=True).expand(net.size())
 
         net = torch.cat([net, pooled], dim=1)
 
         net = self.block_1(net, c)
-        pooled = self.pool(net, dim=2, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=2, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=1)
 
         net = self.block_2(net, c)
-        pooled = self.pool(net, dim=2, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=2, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=1)
 
         net = self.block_3(net, c)
-        pooled = self.pool(net, dim=2, keepdim=True).expand(net.size())
+        pooled = maxpool(net, dim=2, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=1)
 
         net = self.block_4(net, c)
         if self.reduce:
-            net = self.pool(net, dim=2)
+            net = maxpool(net, dim=2)
 
             c = self.fc_c(self.actvn(net))
         else:
