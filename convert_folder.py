@@ -6,10 +6,10 @@ from aro_net.Module.detector import Detector
 
 
 if __name__ == "__main__":
-    model_file_path = "./output/4_7080.ckpt"
-    pcd_folder_path = "/home/chli/github/ASDF/conditional-flow-matching/output/sample/epoch106/"
+    model_file_path = "./output/pretrain-aro/4_7080.ckpt"
+    pcd_folder_path = "/home/chli/github/ASDF/conditional-flow-matching/output/sample/epoch257/"
     sample_point_num = 2048
-    save_folder_path = "./output/CFM_epoch106/"
+    save_folder_path = "./output/CFM_epoch257/"
 
     if not os.path.exists(pcd_folder_path):
         print('folder not exist!')
