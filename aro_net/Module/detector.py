@@ -8,15 +8,17 @@ from typing import Union
 from aro_net.Config.constant import EPSILON
 from aro_net.Config.config import ARO_CONFIG
 from aro_net.Model.aro import ARONet
-from aro_net.Method.sample import sampleQueryPoints
-from aro_net.Module.generator_3d import Generator3D
+from aro_net.Lib.ODC.occupancy_dual_contouring import occupancy_dual_contouring
 
 
 class Detector(object):
     def __init__(
         self,
         model_file_path: Union[str, None] = None,
+        device: str = ARO_CONFIG.device,
     ) -> None:
+        self.device = device
+
         self.n_anc = 48
 
         assert self.n_anc in [24, 48, 96]
@@ -24,11 +26,11 @@ class Detector(object):
             "../aro-net/aro_net/Data/anchors/sphere" + str(self.n_anc) + ".npy"
         )
         self.anc_np = np.concatenate([self.anc_0[i::3] / (2**i) for i in range(3)])
-        self.anc = torch.from_numpy(self.anc_np).unsqueeze(0).to(ARO_CONFIG.device)
+        self.anc = torch.from_numpy(self.anc_np).unsqueeze(0).to(self.device)
 
-        self.model = ARONet()
+        self.model = ARONet().to(self.device)
 
-        self.generator = Generator3D(self.model)
+        self.odc = occupancy_dual_contouring(self.device)
 
         if model_file_path is not None:
             self.loadModel(model_file_path)
@@ -53,8 +55,11 @@ class Detector(object):
                 del state_dict[remove_key]
 
         self.model.load_state_dict(state_dict)
-        self.model.to(ARO_CONFIG.device)
         self.model.eval()
+
+        print('[INFO][Detector::loadModel]')
+        print('\t load model success!')
+        print('\t model_file_path:', model_file_path)
         return True
 
     @torch.no_grad()
@@ -67,10 +72,6 @@ class Detector(object):
 
         trans_points = (points - center) / scale
 
-        query_point_num = int(min(512, points.shape[0]))
-
-        query_points = sampleQueryPoints(trans_points, query_point_num)
-
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(trans_points)
 
@@ -78,21 +79,24 @@ class Detector(object):
         sample_pcd = pcd.farthest_point_down_sample(sample_point_num)
         sample_points = np.asarray(sample_pcd.points).astype(np.float32)
 
-        # FIXME: qry is unused for current inference
-        data = {
-            "pcd": torch.from_numpy(sample_points).unsqueeze(0).to(ARO_CONFIG.device),
-            "qry": torch.from_numpy(query_points).unsqueeze(0).to(ARO_CONFIG.device),
-            "anc": self.anc,
-        }
+        sample_points = torch.from_numpy(sample_points).unsqueeze(0).to(self.device)
 
-        out = self.generator.generate_mesh(data)
+        def toOCC(xyz: torch.Tensor) -> torch.Tensor:
+            qry = xyz.to(self.device, dtype=sample_points.dtype).unsqueeze(0)
 
-        if isinstance(out, trimesh.Trimesh):
-            mesh = out
-        else:
-            mesh = out[0]
+            occ = self.model(sample_points, qry, self.anc).reshape(-1)
 
-        mesh.vertices = mesh.vertices * scale + center
+            return occ.to(xyz.dtype)
+
+        vertices, triangles = self.odc.extract_mesh(
+            imp_func=toOCC,
+            num_grid=16,
+            isolevel=0.5,
+            batch_size=100000000,
+            outside=False,
+        )
+
+        mesh = trimesh.Trimesh(vertices, triangles)
 
         return mesh
 
