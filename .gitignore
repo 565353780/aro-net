@@ -170,6 +170,7 @@ ssl
 .DS_Store
 
 # output
+model
 logs
 output
 *.ckpt
