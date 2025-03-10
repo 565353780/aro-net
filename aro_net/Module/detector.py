@@ -90,13 +90,13 @@ class Detector(object):
 
         vertices, triangles = self.odc.extract_mesh(
             imp_func=toOCC,
-            num_grid=16,
+            num_grid=128,
             isolevel=0.5,
-            batch_size=100000000,
+            batch_size=20000,
             outside=False,
         )
 
-        mesh = trimesh.Trimesh(vertices, triangles)
+        mesh = trimesh.Trimesh(vertices.cpu(), triangles.cpu())
 
         return mesh
 
